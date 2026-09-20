@@ -4,13 +4,19 @@ The SSO container is managed by **1Panel → Containers → Compose → ourtaiko
 It runs the production Gunicorn image `ourtaiko-sso:release`, with a read-only
 filesystem and a non-root user, listening on `127.0.0.1:8090`.
 
-1Panel also owns a separate reverse-proxy website named `ourtaiko-sso`:
-`https://fanmade.ourtaiko.org:8443`, using the existing Fanmade certificate.
-The proxy sends `Host: fanmade.ourtaiko.org:8443` and overwrites the forwarded
-scheme and client address. The operating-system firewall permits TCP 8443.
-Public TCP 8443 was opened at the provider on 2026-09-20. External HTTPS,
-OIDC discovery and the complete browser/game flow are now verified. Fanmade
-uses this SSO issuer in production; its own public API remains on HTTPS 443.
+1Panel owns the separate reverse-proxy website `sso.ourtaiko.org`:
+`https://sso.ourtaiko.org`, with a dedicated Let's Encrypt certificate requested
+through **1Panel → Websites → Certificates**, using the existing ACME account
+and HTTP validation. Automatic renewal is enabled. The certificate initially
+expires 2026-12-19. HTTP redirects to standard HTTPS port 443.
+
+The proxy overwrites Host, forwarded scheme and client address. Fanmade's
+`SSO_ISSUER` and SSO's base URL/allowed host use `sso.ourtaiko.org`; the Fanmade
+callback stays `https://fanmade.ourtaiko.org/api/v1/auth/sso/callback`.
+
+The former `fanmade.ourtaiko.org:8443` website has been removed through 1Panel,
+and its server firewall rule removed. Only the internal SSO process uses 8090.
+The separate `ourtaiko-sso` container/compose remains managed by 1Panel.
 
 ## Server files
 
@@ -26,7 +32,7 @@ uses this SSO issuer in production; its own public API remains on HTTPS 443.
 SMTP uses the existing production mail service. TLS authentication was checked
 without sending mail.
 
-## Verified release (2026-09-20)
+## Verified release and domain migration (2026-09-20)
 
 - Backend `5492b09` and frontend `50bde22` are pushed to `main` and live.
 - SSO image is built from `5a54ce7`; later SSO commits update this runbook only.
@@ -45,7 +51,10 @@ without sending mail.
 - The test used a disposable account, chart and score, with automatic cleanup in
   `finally`. All temporary records were removed; the durable file-deletion queue
   was verified empty afterwards. No verification mail was sent.
-- Existing browser/game sessions require login again with the original account.
+- The full browser/game verification was repeated successfully on the dedicated
+  SSO domain, including consent/callback across subdomains and account-center links.
+- Original account passwords remain valid. The SSO site may ask users to log in
+  again after moving to its own hostname.
 
 Final pre-migration backup (API stopped before dump):
 `/var/backups/ourtaiko-sso-migration/20260920T224353Z`.
@@ -56,6 +65,10 @@ Validated post-migration backup of both databases, application files, private
 configuration and signing key:
 `/var/backups/ourtaiko-sso-migration/post-20260920T225108Z`.
 Keep both backup directories root-only; they contain secrets.
+
+Configuration and old-site backup before the hostname migration:
+`/var/backups/ourtaiko-sso-migration/domain-before-20260920`.
+The account database, signing key and service/client credentials were preserved.
 
 ## Cutover and rollback runbook
 
