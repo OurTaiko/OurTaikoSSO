@@ -1,0 +1,322 @@
+import smtplib
+
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import logout, update_session_auth_hash
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth.views import INTERNAL_RESET_SESSION_TOKEN, LoginView, PasswordResetConfirmView
+from django.contrib.sessions.models import Session
+from django.core import signing
+from django.core.mail import send_mail
+from django.db import IntegrityError, connection, transaction
+from django.http import Http404, JsonResponse
+from django.shortcuts import redirect, render
+from django.urls import reverse_lazy
+from django.utils import timezone
+from django.views.decorators.debug import sensitive_post_parameters
+from django.views.decorators.http import require_POST
+from oauth2_provider.models import AccessToken, Application, Grant, IDToken, RefreshToken
+
+from .forms import EmailForm, LoginForm, ProfileForm, RegistrationForm, VerifiedPasswordResetForm
+from .models import BrowserSession, GameSession, User
+from .security import allow_attempt, revoke_user_tokens
+
+
+class AccountLoginView(LoginView):
+    template_name = "accounts/login.html"
+    authentication_form = LoginForm
+    redirect_authenticated_user = False
+
+
+def notice(request, title, text):
+    return render(request, "accounts/notice.html", {"title": title, "text": text})
+
+
+def send_verification(user):
+    token = signing.dumps(
+        {"id": user.pk, "proof": default_token_generator.make_token(user)}, salt="verify-email"
+    )
+    url = settings.SSO_BASE_URL + "/verify/" + token + "/"
+    send_mail(
+        "验证你的 OurTaiko 邮箱",
+        f"请打开下方链接并确认邮箱（30 分钟内有效）：\n\n{url}\n",
+        None,
+        [user.email],
+    )
+
+
+@sensitive_post_parameters("password1", "password2")
+def register(request):
+    form = RegistrationForm(request.POST or None)
+    if request.method == "POST":
+        if not allow_attempt("signup:" + request.META.get("REMOTE_ADDR", ""), 8, 3600):
+            form.add_error(None, "注册次数过多，请一小时后再试。")
+        elif form.is_valid():
+            try:
+                with transaction.atomic():
+                    user = form.save()
+                    send_verification(user)
+            except IntegrityError:
+                form.add_error(None, "登录名或邮箱已被使用。")
+            except (OSError, smtplib.SMTPException):
+                # Mail provider details and user addresses must not appear in a public response.
+                form.add_error(None, "验证邮件暂时无法发送，请稍后再试。")
+            else:
+                return notice(
+                    request, "去邮箱看看吧", "验证邮件已发送。完成邮箱验证后，就可以登录你的 OurTaiko 账号。"
+                )
+    return render(request, "accounts/register.html", {"form": form})
+
+
+def verify_email(request, token):
+    user = None
+    try:
+        payload = signing.loads(token, salt="verify-email", max_age=1800)
+        user = User.objects.get(pk=payload["id"], is_active=False, email_verified=False)
+        if not default_token_generator.check_token(user, payload["proof"]):
+            user = None
+    except (signing.BadSignature, User.DoesNotExist, KeyError):
+        pass
+    if not user:
+        return notice(request, "链接已失效", "这封邮件的验证链接已使用或已过期。请重新获取验证邮件。")
+    if request.method == "POST":
+        with transaction.atomic():
+            locked = User.objects.select_for_update().get(pk=user.pk)
+            if not default_token_generator.check_token(locked, payload["proof"]) or locked.is_active:
+                return notice(request, "链接已失效", "请重新获取验证邮件。")
+            locked.is_active = locked.email_verified = True
+            locked.save()
+        messages.success(request, "邮箱验证完成，现在可以登录了。")
+        return redirect("login")
+    return render(request, "accounts/verify.html", {"email": user.email})
+
+
+def resend_verification(request):
+    form = EmailForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        if not allow_attempt("resend:" + request.META.get("REMOTE_ADDR", ""), 5, 3600):
+            form.add_error(None, "发送次数过多，请稍后再试。")
+        else:
+            user = User.objects.filter(
+                email__iexact=form.cleaned_data["email"], is_active=False, email_verified=False
+            ).first()
+            if user:
+                send_verification(user)
+            return notice(request, "请查看你的邮箱", "如果该邮箱有待验证的账号，我们已发送新的验证邮件。")
+    return render(
+        request, "accounts/form.html", {"form": form, "title": "重新发送验证邮件", "submit": "发送验证邮件"}
+    )
+
+
+@login_required
+def overview(request):
+    games = GameSession.objects.filter(user=request.user, expires_at__gt=timezone.now())
+    apps = AccessToken.objects.filter(user=request.user, expires__gt=timezone.now())
+    return render(
+        request,
+        "accounts/overview.html",
+        {
+            "active": "overview",
+            "connection_count": len(set(games.values_list("client_id", flat=True)))
+            + len(set(apps.values_list("application_id", flat=True))),
+        },
+    )
+
+
+@login_required
+def profile(request):
+    form = ProfileForm(request.POST or None, instance=request.user)
+    if request.method == "POST" and form.is_valid():
+        # Only write the editable field, so a concurrent password change is never overwritten.
+        User.objects.filter(pk=request.user.pk).update(nickname=form.cleaned_data["nickname"])
+        messages.success(request, "昵称已更新。")
+        return redirect("profile")
+    return render(request, "accounts/profile.html", {"form": form, "active": "profile"})
+
+
+@login_required
+@sensitive_post_parameters("old_password", "new_password1", "new_password2")
+def security(request):
+    form = PasswordChangeForm(request.user, request.POST or None)
+    if request.method == "POST":
+        if not allow_attempt("password-change:" + request.user.pk, 10):
+            form.add_error(None, "尝试次数过多，请稍后再试。")
+        elif form.is_valid():
+            with transaction.atomic():
+                locked = User.objects.select_for_update().get(pk=request.user.pk)
+                if not locked.is_active or locked.password != request.user.password:
+                    form.add_error(None, "账号状态已改变，请刷新后重试。")
+                    return render(request, "accounts/security.html", {"form": form, "active": "security"})
+                form.user = locked
+                form.save()  # Signals revoke OAuth and game sessions; Django invalidates other browser sessions.
+                request.user = locked
+            old_key = request.session.session_key
+            update_session_auth_hash(request, request.user)
+            BrowserSession.objects.filter(pk=old_key).delete()
+            BrowserSession.objects.update_or_create(
+                session_key=request.session.session_key,
+                defaults={"user": request.user, "user_agent": request.META.get("HTTP_USER_AGENT", "")[:200]},
+            )
+            messages.success(request, "密码已更新，其他设备和游戏登录已失效。当前浏览器保持登录。")
+            return redirect("security")
+    return render(request, "accounts/security.html", {"form": form, "active": "security"})
+
+
+def password_reset(request):
+    form = VerifiedPasswordResetForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        if not allow_attempt("reset:" + request.META.get("REMOTE_ADDR", ""), 5, 3600):
+            form.add_error(None, "发送次数过多，请一小时后再试。")
+        else:
+            from urllib.parse import urlsplit
+
+            # Reset emails use the configured canonical origin, never the incoming Host.
+            form.save(
+                request=request,
+                domain_override=urlsplit(settings.SSO_BASE_URL).netloc,
+                use_https=settings.SSO_BASE_URL.startswith("https://"),
+                email_template_name="accounts/reset_email.txt",
+                subject_template_name="accounts/reset_subject.txt",
+            )
+            return notice(
+                request,
+                "请查看你的邮箱",
+                "如果该邮箱绑定了可用账号，我们已发送密码重置链接。链接 30 分钟内有效。",
+            )
+    return render(
+        request,
+        "accounts/form.html",
+        {
+            "form": form,
+            "title": "找回密码",
+            "description": "输入注册邮箱，我们会发送重置密码的链接。",
+            "submit": "发送重置链接",
+        },
+    )
+
+
+class ResetConfirmView(PasswordResetConfirmView):
+    template_name = "accounts/reset_confirm.html"
+    success_url = reverse_lazy("login")
+
+    def form_valid(self, form):
+        with transaction.atomic():
+            locked = User.objects.select_for_update().get(pk=form.user.pk)
+            if (
+                not locked.is_active
+                or not locked.email_verified
+                or not self.token_generator.check_token(
+                    locked, self.request.session.get(INTERNAL_RESET_SESSION_TOKEN)
+                )
+            ):
+                self.validlink = False
+                return self.render_to_response(self.get_context_data())
+            form.user = locked
+            response = super().form_valid(form)
+        if self.request.user.is_authenticated and self.request.user.pk == locked.pk:
+            logout(self.request)
+        messages.success(self.request, "密码已重置，请使用新密码登录。")
+        return response
+
+
+@login_required
+def sessions(request):
+    live_keys = Session.objects.filter(expire_date__gt=timezone.now()).values("session_key")
+    browsers = BrowserSession.objects.filter(user=request.user, session_key__in=live_keys).order_by(
+        "-created_at"
+    )
+    games = GameSession.objects.filter(user=request.user, expires_at__gt=timezone.now()).select_related(
+        "client"
+    )
+    return render(
+        request,
+        "accounts/sessions.html",
+        {
+            "active": "sessions",
+            "browsers": browsers,
+            "games": games,
+            "current_key": request.session.session_key,
+        },
+    )
+
+
+@login_required
+@require_POST
+def revoke_session(request):
+    kind, key = request.POST.get("kind"), request.POST.get("key")
+    if kind == "browser":
+        owned = BrowserSession.objects.filter(user=request.user, pk=key)
+        if owned.exists():
+            Session.objects.filter(pk=key).delete()
+            owned.delete()
+            if key == request.session.session_key:
+                logout(request)
+                return redirect("login")
+    elif kind == "game":
+        GameSession.objects.filter(user=request.user, pk=key).delete()
+    else:
+        raise Http404
+    messages.success(request, "该登录已撤销。")
+    return redirect("sessions")
+
+
+@login_required
+@require_POST
+def revoke_all(request):
+    with transaction.atomic():
+        user = User.objects.select_for_update().get(pk=request.user.pk)
+        user.auth_version += 1
+        user.save(update_fields=["auth_version"])
+        revoke_user_tokens(user)
+        Session.objects.filter(
+            session_key__in=BrowserSession.objects.filter(user=user).values("session_key")
+        ).delete()
+        BrowserSession.objects.filter(user=user).delete()
+    logout(request)
+    messages.success(request, "所有登录和授权凭证已撤销，请重新登录。")
+    return redirect("login")
+
+
+@login_required
+def connections(request):
+    apps = Application.objects.filter(
+        accesstoken__user=request.user, accesstoken__expires__gt=timezone.now()
+    ).distinct()
+    games = (
+        GameSession.objects.filter(user=request.user, expires_at__gt=timezone.now())
+        .values("client_id", "client__name")
+        .distinct()
+    )
+    return render(
+        request, "accounts/connections.html", {"active": "connections", "apps": apps, "game_apps": games}
+    )
+
+
+@login_required
+@require_POST
+def revoke_connection(request):
+    key = request.POST.get("key")
+    if request.POST.get("kind") == "game":
+        GameSession.objects.filter(user=request.user, client_id=key).delete()
+    elif request.POST.get("kind") == "web" and str(key).isdigit():
+        for model in [RefreshToken, AccessToken, IDToken, Grant]:
+            model.objects.filter(user=request.user, application_id=key).delete()
+    else:
+        raise Http404
+    messages.success(request, "应用授权已撤销。")
+    return redirect("connections")
+
+
+def health(request):
+    return JsonResponse({"ok": True})
+
+
+def ready(request):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+    except Exception:
+        return JsonResponse({"ok": False}, status=503)
+    return JsonResponse({"ok": True})

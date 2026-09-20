@@ -1,0 +1,27 @@
+[project]
+name = "ourtaiko-sso"
+version = "0.1.0"
+description = "OurTaiko account center, OpenID Connect provider, and game authentication bridge"
+requires-python = ">=3.12"
+dependencies = [
+  "Django>=5.2.12,<5.3",
+  "django-oauth-toolkit>=3.4.1,<3.5",
+  "dj-database-url>=3,<4",
+  "python-dotenv>=1,<2",
+  "psycopg[binary]>=3.2,<4",
+  "bcrypt>=4,<6",
+  "cryptography>=46",
+  "requests>=2.32,<3",
+  "jwcrypto>=1.5,<2",
+  "gunicorn>=23,<24",
+  "whitenoise>=6.9,<7",
+]
+
+[dependency-groups]
+dev = ["ruff>=0.12", "httpx>=0.28", "PyJWT[crypto]>=2.10"]
+
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

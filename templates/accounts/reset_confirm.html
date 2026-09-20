@@ -1,0 +1,2 @@
+{% extends 'accounts/auth_shell.html' %}{% block title %}设置新密码{% endblock %}{% block content %}
+{% if validlink %}<span class="eyebrow">A FRESH START</span><h1>设置新密码。</h1><p class="lead">更新后，其他设备和游戏需要重新登录。</p><form method="post" class="auth-form">{% csrf_token %}{% include 'accounts/fields.html' %}<button class="button primary full">保存新密码</button></form>{% else %}<h1>链接已失效。</h1><p class="lead">重置链接已使用或已过期，请重新获取。</p><a href="{% url 'password-reset' %}" class="button primary">重新找回密码</a>{% endif %}{% endblock %}

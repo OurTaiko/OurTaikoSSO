@@ -1,0 +1,77 @@
+# SSO 内部认证协议
+
+本地根地址 `http://127.0.0.1:8090`。以下内部接口只允许业务后端调用，不是直接提供给 YataiDON 的公开入口。
+
+全部使用 POST JSON；要求 `X-Service-ID` 和 `X-Service-Key`，不接受浏览器 Origin，也不读取浏览器 Cookie。密钥在数据库仅存 SHA-256；开发用明文位于本机忽略文件 `.data/dev-clients.json`。正式环境通过私有网络或 HTTPS 调用。密钥轮换时须同步更新对应后端配置。
+
+| 路径 | 请求 | 响应 |
+|---|---|---|
+| `/internal/v1/game/login` | `{username,password}` | `{user,accessToken,expiresIn}` |
+| `/internal/v1/game/introspect` | `{accessToken}` | `{user,expiresAt}` |
+| `/internal/v1/game/revoke` | `{accessToken}` | `{ok:true}`，重复撤销同样成功 |
+| `/internal/v1/users/lookup` | `{userIds:[...]}`，最多 100 个 | `{users:[{id,nickname}]}` |
+
+## 登录
+
+成功 200：
+
+```json
+{
+  "user": {
+    "id": "11111111111111111111111111111111",
+    "username": "player1",
+    "nickname": "玩家",
+    "emailVerified": true,
+    "isAdmin": false
+  },
+  "accessToken": "64位小写十六进制随机字符串",
+  "expiresIn": 604800
+}
+```
+
+token 是不可解析的随机凭证，不是 JWT，仅按哈希持久化。有效期 7 天，绑定调用的服务。Fanmade token 不能由 ESE 验证或使用。`isAdmin` 只代表对应业务应用的角色，SSO 管理员身份不赋予其他应用的权限。
+
+原业务后端代理 `/api/v1/game/login` 时，返回值保持此形状；客户端无需了解 SSO。用户密码在认证时透传，不应缓存、落库、记录请求体或写日志。
+
+## 鉴权与资料
+
+业务后端将玩家传入的 Bearer token 作为 `accessToken` 发给 introspect。仅在成功后使用返回的 ID。昵称及角色每次由 SSO 当前数据库读取；密码修改、重置、用户停用、会话撤销会使旧游戏 token 失效。
+
+为了立即生效，本版本不缓存鉴权结果。调用方若自行缓存，必须接受相应的撤销延迟。SSO 不可达时，业务后端返回可重试的 503；不能把客户端传来的 ID 当作备用身份，也不要将上游故障伪装成密码错误。游客曲库由业务端独立提供。
+
+lookup 只返回有效用户的 ID 和昵称；不存在/停用用户省略。调用方应为缺失条目提供显示占位，不能因此删除成绩。公开昵称可短暂缓存，建议 30–60 秒；不在业务数据库建立另一份权威用户资料。
+
+## 错误
+
+JSON 错误格式 `{code,message}`。旧 Fanmade 网关可补充它自己的 `requestId` 和 `validationVersion`。
+
+| HTTP | code | 含义 |
+|---|---|---|
+| 400 | REQUEST_INVALID | JSON、字段或 ID 列表无效 |
+| 401 | SERVICE_UNAUTHORIZED | 业务服务密钥错误或服务停用 |
+| 401 | LOGIN_INVALID | 登录凭证错误、账号未激活或停用 |
+| 401 | UNAUTHORIZED | 游戏 token 过期、撤销或服务不匹配 |
+| 403 | ORIGIN_INVALID | 浏览器不能直接调用内部接口 |
+| 405 | METHOD_NOT_ALLOWED | 使用了 POST 以外的方法 |
+| 415 | CONTENT_TYPE_INVALID | 非 JSON 请求 |
+| 429 | RATE_LIMITED | 账号或来源登录限流，附 Retry-After |
+
+HTTP 请求体上限 32 KiB。业务端使用连接/读取超时，禁止将 token、密钥放入 URL，日志隐藏 Authorization、X-Service-Key 和密码。身份失败与上游网络失败分开处理。
+
+## 网页 API
+
+网页通过 Django session Cookie 和 CSRF 表单操作，Cookie 名为 `ourtaiko_sso_session`，不与 Fanmade 原 Cookie 混用。修改个人资料只能修改 nickname。登录名、邮箱和用户 ID 目前只读。
+
+OIDC 端点由发现文档提供，scope 为 `openid profile`。标准登录使用授权码 + PKCE；不开放 OAuth 密码授权来替代游戏内部接口。游戏 token 与 OIDC token 不可互换。
+
+## Fanmade 网站会话接入
+
+GameClient 新增 `web_client_id`，绑定该业务后端可验证的 confidential OAuth 应用。
+
+- `POST /internal/v1/web/introspect`：`{accessToken}`；返回与游戏身份查询一致的 `{user, expiresAt}`。只接受绑定应用的有效 OAuth access token，拒绝其他业务令牌和游戏令牌。isAdmin 取对应 GameClient 的 ClientRole。
+- `POST /internal/v1/web/revoke`：`{accessToken}`；撤销本应用网站 access token，重复调用仍返回 `{ok:true}`。
+- `POST /internal/v1/users/search`：`{query, after?}`；按昵称包含文本搜索，返回 `{userIds,next}`，每页最多 1000 条，next 为空表示结束；不检索登录名或邮箱。
+
+以上均要求既有 X-Service-ID / X-Service-Key，拒绝浏览器 Origin，不开放跨域调用。
+
+授权页 CSP 的 form-action 只额外允许当前应用已登记 redirect_uri 的来源，用于跨站 POST 授权后的浏览器回跳。

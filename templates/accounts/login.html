@@ -1,0 +1,5 @@
+{% extends 'accounts/auth_shell.html' %}{% block title %}登录{% endblock %}{% block content %}
+<span class="eyebrow">WELCOME BACK</span><h1>跟上你的节奏。</h1><p class="lead">登录 OurTaiko，所有连接从这里开始。</p>
+<form method="post" class="auth-form">{% csrf_token %}{% include 'accounts/fields.html' %}<input type="hidden" name="next" value="{{ next }}"><div class="form-links"><a href="{% url 'resend-verification' %}">验证邮件没收到？</a><a href="{% url 'password-reset' %}">忘记密码？</a></div><button class="button primary full" type="submit">登录账号 <svg><use href="#i-arrow"/></svg></button></form>
+<p class="auth-switch">还没有账号？ <a href="{% url 'register' %}">创建 OurTaiko 账号</a></p><div class="privacy-note"><svg><use href="#i-lock"/></svg>你的密码仅由 OurTaiko 账号中心验证。</div>
+{% endblock %}
