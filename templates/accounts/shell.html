@@ -2,7 +2,7 @@
 {% block layout %}
 <div class="app-shell">
 <aside class="sidebar">
-<a class="brand" href="{% url 'overview' %}"><img src="{% static 'brand.svg' %}" width="37" height="37" alt=""><span>OurTaiko<span class="brand-caption">ACCOUNT CENTER</span></span></a>
+<a class="brand" href="{% url 'overview' %}"><img src="{% static 'icon.png' %}" width="37" height="37" alt=""><span>OurTaiko<span class="brand-caption">ACCOUNT CENTER</span></span></a>
 <div class="nav-label">你的账号</div>
 <nav aria-label="账号设置">
 <a href="{% url 'overview' %}" {% if active == 'overview' %}aria-current="page"{% endif %}><svg><use href="#i-home"/></svg>账号概览</a>

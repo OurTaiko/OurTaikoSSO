@@ -35,7 +35,8 @@ without sending mail.
 ## Verified release and domain migration (2026-09-20)
 
 - Backend `5492b09` and frontend `50bde22` are pushed to `main` and live.
-- SSO image is built from `5a54ce7`; later SSO commits update this runbook only.
+- SSO is built from this repository, with versioned static assets collected into
+  the production image. The site logo and favicon use the shared `OurTaiko/icon.png`.
 - [Frontend deployment workflow](https://github.com/OurTaiko/Fanmade_Frontend/actions/runs/35542581510)
   passed dependency install, lint, tests, build and SSH publishing.
 - All 7 legacy IDs, usernames, nicknames, bcrypt hashes, email/verification flags
