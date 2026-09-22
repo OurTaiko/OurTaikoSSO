@@ -15,6 +15,7 @@ class AccountValidator(OAuth2Validator):
     def get_additional_claims(self):
         return {
             "nickname": lambda request: request.user.nickname,
+            "locale": lambda request: request.user.preferred_language,
             "preferred_username": lambda request: request.user.username,
         }
 

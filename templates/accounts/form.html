@@ -1,2 +1,2 @@
-{% extends 'accounts/auth_shell.html' %}{% block title %}{{ title }}{% endblock %}{% block content %}
-<span class="eyebrow">YOUR ACCOUNT</span><h1>{{ title }}</h1><p class="lead">{{ description }}</p><form method="post" class="auth-form">{% csrf_token %}{% include 'accounts/fields.html' %}<button class="button primary full">{{ submit }}</button></form><p class="auth-switch"><a href="{% url 'login' %}">返回登录</a></p>{% endblock %}
+{% extends 'accounts/auth_shell.html' %}{% load i18n %}{% block title %}{{ title }}{% endblock %}{% block content %}
+<span class="eyebrow">{% translate '你的账号' %}</span><h1>{{ title }}</h1><p class="lead">{{ description }}</p><form method="post" class="auth-form">{% csrf_token %}{% include 'accounts/fields.html' %}<button class="button primary full">{{ submit }}</button></form><p class="auth-switch"><a href="{% url 'login' %}">{% translate '返回登录' %}</a></p>{% endblock %}

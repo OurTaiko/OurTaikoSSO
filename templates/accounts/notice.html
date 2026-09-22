@@ -1,2 +1,2 @@
-{% extends 'accounts/auth_shell.html' %}{% block title %}{{ title }}{% endblock %}{% block content %}
-<div class="large-icon"><svg><use href="#i-check"/></svg></div><h1>{{ title }}</h1><p class="lead">{{ text }}</p><a class="button primary" href="{% url 'login' %}">返回登录</a><p class="auth-switch"><a href="{% url 'resend-verification' %}">重新发送验证邮件</a></p>{% endblock %}
+{% extends 'accounts/auth_shell.html' %}{% load i18n %}{% block title %}{{ title }}{% endblock %}{% block content %}
+<div class="large-icon"><svg><use href="#i-check"/></svg></div><h1>{{ title }}</h1><p class="lead">{{ text }}</p><a class="button primary" href="{% url 'login' %}">{% translate '返回登录' %}</a><p class="auth-switch"><a href="{% url 'resend-verification' %}">{% translate '重新发送验证邮件' %}</a></p>{% endblock %}

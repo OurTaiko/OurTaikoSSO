@@ -59,6 +59,7 @@ def user_payload(user, client):
         "id": user.pk,
         "username": user.username,
         "nickname": user.nickname,
+        "preferredLanguage": user.preferred_language,
         "emailVerified": user.email_verified,
         "isAdmin": ClientRole.objects.filter(user=user, client=client, is_admin=True).exists(),
     }

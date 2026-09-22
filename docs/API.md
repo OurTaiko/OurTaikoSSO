@@ -75,3 +75,11 @@ GameClient 新增 `web_client_id`，绑定该业务后端可验证的 confidenti
 以上均要求既有 X-Service-ID / X-Service-Key，拒绝浏览器 Origin，不开放跨域调用。
 
 授权页 CSP 的 form-action 只额外允许当前应用已登记 redirect_uri 的来源，用于跨站 POST 授权后的浏览器回跳。
+
+## Preferred language
+
+The SSO user record stores `preferred_language`, one of `zh-hans` (default), `en`, `ja`, or `ko`. Migration `0003_user_preferred_language` assigns Chinese to existing accounts. Authenticated identity responses (`game/login`, `game/introspect`, `web/introspect`) include `user.preferredLanguage`. OIDC exposes the standard `locale` claim only under the `profile` scope. Public nickname lookup/search do not expose preferences.
+
+The account profile form and the CSRF-protected `POST /language/` endpoint update the preference. The endpoint accepts form fields `language` and `next`; unsupported languages are rejected and redirects are limited to the same host. For anonymous visitors, explicit language selection is kept in the SSO session, and registration copies it into the new account. Existing account preferences take priority on login. Without a preference, the website uses Chinese; it does not infer a language from `Accept-Language`.
+
+Business services relay live identity data rather than storing a second preference. Changing language does not change passwords, IDs, roles or authentication versions and does not revoke sessions.

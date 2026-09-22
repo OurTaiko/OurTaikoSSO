@@ -25,6 +25,7 @@ urlpatterns = [
     path("register/", views.register, name="register"),
     path("verify/<str:token>/", views.verify_email, name="verify"),
     path("resend-verification/", views.resend_verification, name="resend-verification"),
+    path("language/", views.set_language, name="set-language"),
     path("profile/", views.profile, name="profile"),
     path("security/", views.security, name="security"),
     path("password/reset/", views.password_reset, name="password-reset"),

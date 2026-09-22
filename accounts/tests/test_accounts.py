@@ -139,10 +139,10 @@ class AccountTests(TestCase):
 
     def test_profile_edit_preserves_id_and_rejects_control_chars(self):
         self.client.force_login(self.user)
-        self.assertEqual(self.client.post("/profile/", {"nickname": "咚咚"}).status_code, 302)
+        self.assertEqual(self.client.post("/profile/", {"nickname": "咚咚", "preferred_language": "zh-hans"}).status_code, 302)
         self.user.refresh_from_db()
         self.assertEqual(self.user.nickname, "咚咚")
-        self.assertEqual(self.client.post("/profile/", {"nickname": "bad\nname"}).status_code, 200)
+        self.assertEqual(self.client.post("/profile/", {"nickname": "bad\nname", "preferred_language": "zh-hans"}).status_code, 200)
         self.user.refresh_from_db()
         self.assertEqual(self.user.nickname, "咚咚")
 

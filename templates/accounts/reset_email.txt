@@ -1,6 +1,6 @@
-你正在重置 OurTaiko 账号密码。
+{% load i18n %}{% translate "你正在重置 OurTaiko 账号密码。" %}
 
-请在 30 分钟内打开下面的链接：
+{% translate "请在 30 分钟内打开下面的链接：" %}
 {{ protocol }}://{{ domain }}{% url 'password_reset_confirm' uidb64=uid token=token %}
 
-如果不是你发起的操作，可以忽略这封邮件。
+{% translate "如果不是你发起的操作，可以忽略这封邮件。" %}

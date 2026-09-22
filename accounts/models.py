@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models.functions import Lower
+from django.utils.translation import gettext_lazy as _
 
 
 def user_id():
@@ -14,9 +15,9 @@ def user_id():
 
 def validate_nickname(value):
     if not value.strip() or len(value) > 40 or len(value.encode("utf-8")) > 160:
-        raise ValidationError("昵称需为 1–40 个字符。")
+        raise ValidationError(_("昵称需为 1–40 个字符。"))
     if any(unicodedata.category(c).startswith("C") or c in "\u2028\u2029" for c in value):
-        raise ValidationError("昵称不能包含换行或控制字符。")
+        raise ValidationError(_("昵称不能包含换行或控制字符。"))
 
 
 class User(AbstractUser):
@@ -25,12 +26,25 @@ class User(AbstractUser):
         max_length=24,
         unique=True,
         validators=[
-            RegexValidator(r"^[A-Za-z0-9]{3,24}$", "登录名需为 3–24 位英文字母或数字。"),
+            RegexValidator(r"^[A-Za-z0-9]{3,24}$", _("登录名需为 3–24 位英文字母或数字。")),
         ],
     )
     nickname = models.CharField(max_length=40, validators=[validate_nickname])
     email = models.EmailField(blank=True)
     email_verified = models.BooleanField(default=False)
+
+    class Language(models.TextChoices):
+        CHINESE = "zh-hans", "简体中文"
+        ENGLISH = "en", "English"
+        JAPANESE = "ja", "日本語"
+        KOREAN = "ko", "한국어"
+
+    preferred_language = models.CharField(
+        max_length=16,
+        choices=Language.choices,
+        default=Language.CHINESE,
+        verbose_name=_("偏好语言"),
+    )
     auth_version = models.PositiveIntegerField(default=1)
 
     class Meta:

@@ -1,5 +1,5 @@
-{% load static %}<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>{% block title %}账号中心{% endblock %} · OurTaiko</title><link rel="icon" href="{% static 'icon.png' %}" type="image/png"><link rel="stylesheet" href="{% static 'app.css' %}"><script src="{% static 'app.js' %}" defer></script></head>
+{% load static i18n %}<!doctype html>
+<html lang="{{ LANGUAGE_CODE }}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>{% block title %}{% translate '账号中心' %}{% endblock %} · OurTaiko</title><link rel="icon" href="{% static 'icon.png' %}" type="image/png"><link rel="stylesheet" href="{% static 'app.css' %}"><script src="{% static 'app.js' %}" defer></script></head>
 <body>
 <svg class="symbol-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
 <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3zM9 20v-7h6v7"/></symbol>
@@ -11,6 +11,7 @@
 <symbol id="i-out" viewBox="0 0 24 24"><path d="M9 4H4v16h5m5-13 5 5-5 5M8 12h12"/></symbol>
 <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
 </defs></svg>
-<a class="skip-link" href="#main">跳到主要内容</a>
+<a class="skip-link" href="#main">{% translate '跳到主要内容' %}</a>
+{% include 'accounts/language.html' %}
 {% block layout %}{% endblock %}
 </body></html>

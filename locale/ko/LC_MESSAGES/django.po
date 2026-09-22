@@ -1,0 +1,763 @@
+# OurTaiko account center translations.
+msgid ""
+msgstr ""
+"Project-Id-Version: OurTaiko SSO\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-22 19:36+0000\n"
+"Language: ko\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: accounts/admin.py:28
+msgid "OurTaiko 账号管理"
+msgstr "OurTaiko 계정 관리"
+
+#: accounts/forms.py:11 accounts/forms.py:28 templates/accounts/demo.html:2
+#: templates/accounts/profile.html:4
+msgid "登录名"
+msgstr "로그인 이름"
+
+#: accounts/forms.py:13
+msgid "密码"
+msgstr "비밀번호"
+
+#: accounts/forms.py:18
+msgid "尝试次数过多，请 10 分钟后再试。"
+msgstr "시도 횟수가 너무 많습니다. 10분 후 다시 시도하세요."
+
+#: accounts/forms.py:23 templates/accounts/profile.html:4
+msgid "邮箱"
+msgstr "이메일"
+
+#: accounts/forms.py:28 accounts/forms.py:52 templates/accounts/demo.html:2
+msgid "昵称"
+msgstr "닉네임"
+
+#: accounts/forms.py:30
+msgid "3–24 位英文字母或数字，用于登录。"
+msgstr "로그인에 사용할 3–24자의 영문 또는 숫자."
+
+#: accounts/forms.py:31
+msgid "大家在作品和排行榜上看到的名字。"
+msgstr "작품과 순위표에 표시되는 이름."
+
+#: accounts/forms.py:37
+msgid "该邮箱已注册，请登录或找回密码。"
+msgstr "이미 등록된 이메일입니다. 로그인하거나 비밀번호를 재설정하세요."
+
+#: accounts/forms.py:53
+msgid "最多 40 个字符。修改后，接入的服务会在缓存更新后显示新昵称。"
+msgstr "최대 40자입니다. 연결된 서비스는 정보를 새로고침하면 새 닉네임을 표시합니다."
+
+#: accounts/forms.py:60
+msgid "注册邮箱"
+msgstr "가입 이메일"
+
+#: accounts/models.py:18
+msgid "昵称需为 1–40 个字符。"
+msgstr "닉네임은 1–40자여야 합니다."
+
+#: accounts/models.py:20
+msgid "昵称不能包含换行或控制字符。"
+msgstr "닉네임에는 줄바꿈이나 제어 문자를 사용할 수 없습니다."
+
+#: accounts/models.py:29
+msgid "登录名需为 3–24 位英文字母或数字。"
+msgstr "로그인 이름은 3–24자의 영문 또는 숫자여야 합니다."
+
+#: accounts/models.py:46
+msgid "偏好语言"
+msgstr "선호 언어"
+
+#: accounts/views.py:33
+msgid "不支持此语言。"
+msgstr "지원하지 않는 언어입니다."
+
+#: accounts/views.py:62
+msgid "验证你的 OurTaiko 邮箱"
+msgstr "OurTaiko 이메일 인증"
+
+#: accounts/views.py:63
+#, python-format
+msgid ""
+"请打开下方链接并确认邮箱（30 分钟内有效）：\n"
+"\n"
+"%(url)s\n"
+msgstr ""
+"아래 링크에서 이메일을 인증하세요(30분간 유효):\n"
+"\n"
+"%(url)s\n"
+
+#: accounts/views.py:74
+msgid "注册次数过多，请一小时后再试。"
+msgstr "가입 시도 횟수가 너무 많습니다. 한 시간 후 다시 시도하세요."
+
+#: accounts/views.py:83
+msgid "登录名或邮箱已被使用。"
+msgstr "로그인 이름 또는 이메일이 이미 사용 중입니다."
+
+#: accounts/views.py:86
+msgid "验证邮件暂时无法发送，请稍后再试。"
+msgstr "지금 인증 메일을 보낼 수 없습니다. 잠시 후 다시 시도하세요."
+
+#: accounts/views.py:90
+msgid "去邮箱看看吧"
+msgstr "메일함을 확인하세요"
+
+#: accounts/views.py:91
+msgid "验证邮件已发送。完成邮箱验证后，就可以登录你的 OurTaiko 账号。"
+msgstr "인증 메일을 보냈습니다. 이메일 인증 후 OurTaiko에 로그인할 수 있습니다."
+
+#: accounts/views.py:106 accounts/views.py:111
+msgid "链接已失效"
+msgstr "만료된 링크"
+
+#: accounts/views.py:106
+msgid "这封邮件的验证链接已使用或已过期。请重新获取验证邮件。"
+msgstr "인증 링크가 이미 사용되었거나 만료되었습니다. 새 인증 메일을 요청하세요."
+
+#: accounts/views.py:111
+msgid "请重新获取验证邮件。"
+msgstr "새 인증 메일을 요청하세요."
+
+#: accounts/views.py:114
+msgid "邮箱验证完成，现在可以登录了。"
+msgstr "이메일 인증이 완료되었습니다. 이제 로그인할 수 있습니다."
+
+#: accounts/views.py:123
+msgid "发送次数过多，请稍后再试。"
+msgstr "메일 요청이 너무 많습니다. 잠시 후 다시 시도하세요."
+
+#: accounts/views.py:131 accounts/views.py:216
+msgid "请查看你的邮箱"
+msgstr "이메일을 확인하세요"
+
+#: accounts/views.py:131
+msgid "如果该邮箱有待验证的账号，我们已发送新的验证邮件。"
+msgstr "이 이메일에 인증 대기 중인 계정이 있다면 새 인증 메일을 보냈습니다."
+
+#: accounts/views.py:136 templates/accounts/notice.html:2
+msgid "重新发送验证邮件"
+msgstr "인증 메일 다시 보내기"
+
+#: accounts/views.py:136
+msgid "发送验证邮件"
+msgstr "인증 메일 보내기"
+
+#: accounts/views.py:165
+msgid "个人资料已更新。"
+msgstr "프로필을 업데이트했습니다."
+
+#: accounts/views.py:176
+msgid "尝试次数过多，请稍后再试。"
+msgstr "시도 횟수가 너무 많습니다. 잠시 후 다시 시도하세요."
+
+#: accounts/views.py:181
+msgid "账号状态已改变，请刷新后重试。"
+msgstr "계정 상태가 변경되었습니다. 새로고침 후 다시 시도하세요."
+
+#: accounts/views.py:193
+msgid "密码已更新，其他设备和游戏登录已失效。当前浏览器保持登录。"
+msgstr "비밀번호를 변경했습니다. 다른 기기와 게임은 로그아웃되었습니다. 현재 브라우저의 로그인은 유지됩니다."
+
+#: accounts/views.py:202
+msgid "发送次数过多，请一小时后再试。"
+msgstr "메일 요청이 너무 많습니다. 한 시간 후 다시 시도하세요."
+
+#: accounts/views.py:217
+msgid "如果该邮箱绑定了可用账号，我们已发送密码重置链接。链接 30 分钟内有效。"
+msgstr "이 이메일에 사용 가능한 계정이 있다면 비밀번호 재설정 링크를 보냈습니다. 30분간 유효합니다."
+
+#: accounts/views.py:224
+msgid "找回密码"
+msgstr "비밀번호 재설정"
+
+#: accounts/views.py:225
+msgid "输入注册邮箱，我们会发送重置密码的链接。"
+msgstr "가입 이메일을 입력하면 비밀번호 재설정 링크를 보내드립니다."
+
+#: accounts/views.py:226
+msgid "发送重置链接"
+msgstr "재설정 링크 보내기"
+
+#: accounts/views.py:251
+msgid "密码已重置，请使用新密码登录。"
+msgstr "비밀번호를 재설정했습니다. 새 비밀번호로 로그인하세요."
+
+#: accounts/views.py:292
+msgid "该登录已撤销。"
+msgstr "로그인 세션을 해제했습니다."
+
+#: accounts/views.py:309
+msgid "所有登录和授权凭证已撤销，请重新登录。"
+msgstr "모든 로그인 및 인증 정보를 해제했습니다. 다시 로그인하세요."
+
+#: accounts/views.py:339
+msgid "应用授权已撤销。"
+msgstr "앱 인증을 해제했습니다."
+
+#: config/settings.py:130
+msgid "确认你的账号身份"
+msgstr "계정 신원 확인"
+
+#: config/settings.py:130
+msgid "读取你的昵称、登录名和偏好语言"
+msgstr "닉네임, 로그인 이름, 선호 언어 읽기"
+
+#: templates/accounts/auth_shell.html:2 templates/accounts/shell.html:5
+#: templates/accounts/shell.html:16 templates/base.html:2
+msgid "账号中心"
+msgstr "계정 센터"
+
+#: templates/accounts/auth_shell.html:3 templates/accounts/overview.html:3
+#: templates/accounts/shell.html:18
+msgid "OurTaiko 账号中心"
+msgstr "OurTaiko 계정 센터"
+
+#: templates/accounts/auth_shell.html:3 templates/accounts/shell.html:16
+msgid "本地开发环境"
+msgstr "로컬 개발 환경"
+
+#: templates/accounts/auth_shell.html:4
+msgid "OurTaiko，一个账号连接你的节奏"
+msgstr "OurTaiko, 하나의 계정으로 리듬을 연결하세요"
+
+#: templates/accounts/auth_shell.html:4
+msgid "一个账号，你的节奏"
+msgstr "하나의 계정, 나만의 리듬"
+
+#: templates/accounts/auth_shell.html:4
+msgid "把热爱，连在一起。"
+msgstr "좋아하는 것을 연결하세요."
+
+#: templates/accounts/auth_shell.html:4
+msgid "一个账号，每一份热爱。"
+msgstr "하나의 계정으로 모든 열정을."
+
+#: templates/accounts/auth_shell.html:4
+msgid "管理你的资料与安全设置。在 OurTaiko 的世界里，保持同一个你。"
+msgstr "프로필과 보안을 관리하세요. OurTaiko 어디에서나 같은 나로."
+
+#: templates/accounts/connections.html:1 templates/accounts/connections.html:2
+#: templates/accounts/overview.html:5 templates/accounts/shell.html:11
+msgid "应用授权"
+msgstr "연결된 앱"
+
+#: templates/accounts/connections.html:2
+msgid "由你连接"
+msgstr "내가 연결한 앱"
+
+#: templates/accounts/connections.html:2
+msgid "决定哪些应用可以使用你的 OurTaiko 身份。"
+msgstr "OurTaiko 계정을 사용할 수 있는 앱을 선택하세요."
+
+#: templates/accounts/connections.html:3
+msgid "已连接的应用"
+msgstr "연결된 앱 목록"
+
+#: templates/accounts/connections.html:3
+msgid "撤销后，相应应用需要重新获得登录凭证。"
+msgstr "해제하면 해당 앱은 다시 로그인해야 합니다."
+
+#: templates/accounts/connections.html:3
+msgid "网站授权登录"
+msgstr "웹사이트 로그인"
+
+#: templates/accounts/connections.html:3
+msgid "撤销授权"
+msgstr "접근 권한 해제"
+
+#: templates/accounts/connections.html:3
+msgid "游戏服务器认证"
+msgstr "게임 서버 인증"
+
+#: templates/accounts/connections.html:3
+msgid "你的连接，从这里开始。"
+msgstr "연결은 여기서 시작됩니다."
+
+#: templates/accounts/connections.html:3
+msgid "使用 OurTaiko 登录应用后，可以在这里管理授权。"
+msgstr "OurTaiko로 앱에 로그인하면 여기에서 권한을 관리할 수 있습니다."
+
+#: templates/accounts/connections.html:3
+msgid "体验网站授权登录"
+msgstr "웹사이트 로그인 체험"
+
+#: templates/accounts/connections.html:3
+msgid "应用只能取得授权范围内的资料，无法读取你保存的密码。"
+msgstr "앱은 허용된 정보만 받을 수 있으며 저장된 비밀번호를 읽을 수 없습니다."
+
+#: templates/accounts/demo.html:1
+msgid "登录演示成功"
+msgstr "로그인 데모 완료"
+
+#: templates/accounts/demo.html:2
+msgid "已连接"
+msgstr "연결됨"
+
+#: templates/accounts/demo.html:2
+msgid "授权登录成功。"
+msgstr "로그인 인증이 완료되었습니다."
+
+#: templates/accounts/demo.html:2
+msgid "演示应用已确认你的 OurTaiko 身份。"
+msgstr "데모 앱이 OurTaiko 계정을 확인했습니다."
+
+#: templates/accounts/demo.html:2 templates/accounts/overview.html:2
+#, python-format
+msgid "你好，%(nickname)s。"
+msgstr "안녕하세요, %(nickname)s님."
+
+#: templates/accounts/demo.html:2
+msgid "这是应用通过账号中心取得的资料。"
+msgstr "계정 센터가 앱에 제공한 정보입니다."
+
+#: templates/accounts/demo.html:2 templates/accounts/profile.html:4
+msgid "用户 ID"
+msgstr "사용자 ID"
+
+#: templates/accounts/demo.html:2
+msgid "查看应用授权"
+msgstr "연결된 앱 보기"
+
+#: templates/accounts/form.html:2 templates/accounts/shell.html:6
+msgid "你的账号"
+msgstr "내 계정"
+
+#: templates/accounts/form.html:2 templates/accounts/notice.html:2
+#: templates/accounts/register.html:2
+msgid "返回登录"
+msgstr "로그인으로 돌아가기"
+
+#: templates/accounts/language.html:5
+msgid "语言"
+msgstr "언어"
+
+#: templates/accounts/language.html:11
+msgid "应用语言"
+msgstr "언어 적용"
+
+#: templates/accounts/login.html:1
+msgid "登录"
+msgstr "로그인"
+
+#: templates/accounts/login.html:2
+msgid "欢迎回来"
+msgstr "다시 오신 것을 환영합니다"
+
+#: templates/accounts/login.html:2
+msgid "跟上你的节奏。"
+msgstr "나만의 리듬으로."
+
+#: templates/accounts/login.html:2
+msgid "登录 OurTaiko，所有连接从这里开始。"
+msgstr "OurTaiko에 로그인하세요. 모든 연결이 여기서 시작됩니다."
+
+#: templates/accounts/login.html:3
+msgid "验证邮件没收到？"
+msgstr "인증 메일을 받지 못하셨나요?"
+
+#: templates/accounts/login.html:3
+msgid "忘记密码？"
+msgstr "비밀번호를 잊으셨나요?"
+
+#: templates/accounts/login.html:3
+msgid "登录账号"
+msgstr "로그인"
+
+#: templates/accounts/login.html:4
+msgid "还没有账号？"
+msgstr "아직 계정이 없으신가요?"
+
+#: templates/accounts/login.html:4
+msgid "创建 OurTaiko 账号"
+msgstr "OurTaiko 계정 만들기"
+
+#: templates/accounts/login.html:4
+msgid "你的密码仅由 OurTaiko 账号中心验证。"
+msgstr "비밀번호는 OurTaiko 계정 센터에서만 확인합니다."
+
+#: templates/accounts/overview.html:1 templates/accounts/shell.html:8
+msgid "账号概览"
+msgstr "계정 개요"
+
+#: templates/accounts/overview.html:2
+msgid "你的账号，和谐相连"
+msgstr "하나로 연결된 내 계정"
+
+#: templates/accounts/overview.html:2
+msgid "你的资料、安全与连接，都在这里。"
+msgstr "프로필, 보안, 연결을 한곳에서 관리하세요."
+
+#: templates/accounts/overview.html:2
+msgid "账号正常"
+msgstr "정상 계정"
+
+#: templates/accounts/overview.html:3
+msgid "每一段节奏，都属于同一个你。"
+msgstr "모든 리듬이 하나의 나에게."
+
+#: templates/accounts/overview.html:3
+msgid "一个账号，连接你的创作与游玩。"
+msgstr "하나의 계정으로 창작과 플레이를 연결하세요."
+
+#: templates/accounts/overview.html:3
+msgid "管理个人资料"
+msgstr "프로필 관리"
+
+#: templates/accounts/overview.html:4
+msgid "账号一览"
+msgstr "계정 한눈에 보기"
+
+#: templates/accounts/overview.html:4
+msgid "保持最新，安心游玩"
+msgstr "최신 정보를 유지하고 안심하고 플레이하세요"
+
+#: templates/accounts/overview.html:5 templates/accounts/profile.html:1
+#: templates/accounts/profile.html:2 templates/accounts/shell.html:9
+msgid "个人资料"
+msgstr "프로필"
+
+#: templates/accounts/overview.html:5
+msgid "查看并更新你的公开昵称"
+msgstr "공개 닉네임 확인 및 변경"
+
+#: templates/accounts/overview.html:5
+msgid "账号安全"
+msgstr "계정 보안"
+
+#: templates/accounts/overview.html:5
+msgid "邮箱已验证"
+msgstr "이메일 인증 완료"
+
+#: templates/accounts/overview.html:5
+msgid "邮箱未验证"
+msgstr "이메일 미인증"
+
+#: templates/accounts/overview.html:5
+msgid "管理密码与账号安全"
+msgstr "비밀번호 및 계정 보안 관리"
+
+#: templates/accounts/overview.html:5
+#, python-format
+msgid "%(count)s 个已连接应用"
+msgid_plural "%(count)s 个已连接应用"
+msgstr[0] "연결된 앱 %(count)s개"
+
+#: templates/accounts/overview.html:5
+msgid "查看并管理账号授权"
+msgstr "앱 접근 권한 확인 및 관리"
+
+#: templates/accounts/overview.html:6
+#, python-format
+msgid "加入于 %(joined)s"
+msgstr "%(joined)s 가입"
+
+#: templates/accounts/overview.html:6
+msgid "查看资料"
+msgstr "프로필 보기"
+
+#: templates/accounts/overview.html:7
+msgid "本地登录演示"
+msgstr "로컬 로그인 데모"
+
+#: templates/accounts/overview.html:7
+msgid "试用一次完整的网站授权登录。"
+msgstr "전체 웹사이트 로그인 과정을 체험하세요."
+
+#: templates/accounts/overview.html:7
+msgid "开始体验"
+msgstr "체험 시작"
+
+#: templates/accounts/profile.html:2
+msgid "展现你的个性"
+msgstr "나답게 꾸며보세요"
+
+#: templates/accounts/profile.html:2
+msgid "让大家在作品与排行榜上认出你。"
+msgstr "작품과 순위표에서 나를 알아볼 수 있게 하세요."
+
+#: templates/accounts/profile.html:3
+msgid "公开资料"
+msgstr "공개 프로필"
+
+#: templates/accounts/profile.html:3
+msgid "所有接入的应用使用同一个昵称和偏好语言。"
+msgstr "연결된 앱은 같은 닉네임과 선호 언어를 사용합니다."
+
+#: templates/accounts/profile.html:3
+msgid "保存修改"
+msgstr "변경 사항 저장"
+
+#: templates/accounts/profile.html:4
+msgid "账号信息"
+msgstr "계정 정보"
+
+#: templates/accounts/profile.html:4
+msgid "唯一标识符用于关联作品与成绩，不会随昵称变化。"
+msgstr "고유 ID는 작품과 점수를 연결하며 닉네임이 바뀌어도 변하지 않습니다."
+
+#: templates/accounts/profile.html:4
+msgid "尚未绑定"
+msgstr "연결되지 않음"
+
+#: templates/accounts/profile.html:4
+msgid "已验证"
+msgstr "인증됨"
+
+#: templates/accounts/register.html:1
+msgid "创建账号"
+msgstr "계정 만들기"
+
+#: templates/accounts/register.html:2
+msgid "加入这段节奏"
+msgstr "리듬에 함께하세요"
+
+#: templates/accounts/register.html:2
+msgid "从这里，开始。"
+msgstr "여기서 시작하세요."
+
+#: templates/accounts/register.html:2
+msgid "创建一个属于你的 OurTaiko 账号。"
+msgstr "나만의 OurTaiko 계정을 만드세요."
+
+#: templates/accounts/register.html:2
+msgid "创建账号并验证邮箱"
+msgstr "계정 만들기 및 이메일 인증"
+
+#: templates/accounts/register.html:2
+msgid "已经有账号？"
+msgstr "이미 계정이 있으신가요?"
+
+#: templates/accounts/reset_confirm.html:1
+msgid "设置新密码"
+msgstr "새 비밀번호 설정"
+
+#: templates/accounts/reset_confirm.html:2
+msgid "全新的开始"
+msgstr "새로운 시작"
+
+#: templates/accounts/reset_confirm.html:2
+msgid "设置新密码。"
+msgstr "새 비밀번호를 설정하세요."
+
+#: templates/accounts/reset_confirm.html:2
+msgid "更新后，其他设备和游戏需要重新登录。"
+msgstr "변경 후 다른 기기와 게임은 다시 로그인해야 합니다."
+
+#: templates/accounts/reset_confirm.html:2
+msgid "保存新密码"
+msgstr "새 비밀번호 저장"
+
+#: templates/accounts/reset_confirm.html:2
+msgid "链接已失效。"
+msgstr "링크가 만료되었습니다."
+
+#: templates/accounts/reset_confirm.html:2
+msgid "重置链接已使用或已过期，请重新获取。"
+msgstr "재설정 링크가 이미 사용되었거나 만료되었습니다. 새 링크를 요청하세요."
+
+#: templates/accounts/reset_confirm.html:2
+msgid "重新找回密码"
+msgstr "비밀번호 재설정 다시 요청"
+
+#: templates/accounts/reset_email.txt:1
+msgid "你正在重置 OurTaiko 账号密码。"
+msgstr "OurTaiko 계정 비밀번호를 재설정하고 있습니다."
+
+#: templates/accounts/reset_email.txt:3
+msgid "请在 30 分钟内打开下面的链接："
+msgstr "30분 이내에 아래 링크를 여세요:"
+
+#: templates/accounts/reset_email.txt:6
+msgid "如果不是你发起的操作，可以忽略这封邮件。"
+msgstr "요청한 적이 없다면 이 메일을 무시하세요."
+
+#: templates/accounts/reset_subject.txt:1
+msgid "重置你的 OurTaiko 密码"
+msgstr "OurTaiko 비밀번호 재설정"
+
+#: templates/accounts/security.html:1 templates/accounts/security.html:2
+#: templates/accounts/shell.html:10
+msgid "密码与安全"
+msgstr "비밀번호 및 보안"
+
+#: templates/accounts/security.html:2
+msgid "守护你的节奏"
+msgstr "내 리듬을 안전하게"
+
+#: templates/accounts/security.html:2
+msgid "保护你的账号，也保护每一份创作和成绩。"
+msgstr "계정과 모든 작품, 점수를 보호하세요."
+
+#: templates/accounts/security.html:3
+msgid "修改密码"
+msgstr "비밀번호 변경"
+
+#: templates/accounts/security.html:3
+msgid "修改后，其他浏览器和游戏需要重新登录。"
+msgstr "변경 후 다른 브라우저와 게임은 다시 로그인해야 합니다."
+
+#: templates/accounts/security.html:3
+msgid "更新密码"
+msgstr "비밀번호 변경"
+
+#: templates/accounts/security.html:3
+#, python-format
+msgid "忘记当前密码？可以通过 <a href=\"%(reset_url)s\">注册邮箱找回密码</a>。"
+msgstr "비밀번호를 잊으셨나요? <a href=\"%(reset_url)s\">가입 이메일로 재설정</a>할 수 있습니다."
+
+#: templates/accounts/sessions.html:1 templates/accounts/sessions.html:2
+#: templates/accounts/shell.html:12
+msgid "登录设备"
+msgstr "로그인 기기"
+
+#: templates/accounts/sessions.html:2
+msgid "由你掌控"
+msgstr "내가 직접 관리"
+
+#: templates/accounts/sessions.html:2
+msgid "查看有效登录，随时撤销不再使用的设备。"
+msgstr "활성 로그인을 확인하고 사용하지 않는 기기의 접근을 해제하세요."
+
+#: templates/accounts/sessions.html:3
+msgid "浏览器登录"
+msgstr "브라우저 로그인"
+
+#: templates/accounts/sessions.html:3
+msgid "这些浏览器可以访问你的账号中心。"
+msgstr "이 브라우저들은 계정 센터에 접근할 수 있습니다."
+
+#: templates/accounts/sessions.html:3
+msgid "当前浏览器"
+msgstr "현재 브라우저"
+
+#: templates/accounts/sessions.html:3
+msgid "正在使用"
+msgstr "사용 중"
+
+#: templates/accounts/sessions.html:3
+msgid "浏览器"
+msgstr "브라우저"
+
+#: templates/accounts/sessions.html:3
+msgid "退出"
+msgstr "로그아웃"
+
+#: templates/accounts/sessions.html:3
+msgid "暂无其他浏览器登录。"
+msgstr "다른 브라우저 로그인이 없습니다."
+
+#: templates/accounts/sessions.html:4
+msgid "游戏登录"
+msgstr "게임 로그인"
+
+#: templates/accounts/sessions.html:4
+msgid "已连接游戏服务器的登录会显示在这里。"
+msgstr "연결된 서버의 게임 로그인이 여기에 표시됩니다."
+
+#: templates/accounts/sessions.html:4
+#, python-format
+msgid "有效期至 %(expiry)s UTC"
+msgstr "만료: %(expiry)s UTC"
+
+#: templates/accounts/sessions.html:4
+msgid "撤销"
+msgstr "해제"
+
+#: templates/accounts/sessions.html:4
+msgid "暂无游戏登录"
+msgstr "게임 로그인이 없습니다"
+
+#: templates/accounts/sessions.html:4
+msgid "通过已接入的游戏服务器登录后，会显示在这里。"
+msgstr "연결된 게임 서버로 로그인하면 여기에 표시됩니다."
+
+#: templates/accounts/sessions.html:5
+msgid "退出所有设备"
+msgstr "모든 기기 로그아웃"
+
+#: templates/accounts/sessions.html:5
+msgid "撤销全部浏览器、游戏和应用授权凭证，包括当前登录。"
+msgstr "현재 로그인을 포함해 모든 브라우저, 게임, 앱 인증 정보를 해제합니다."
+
+#: templates/accounts/sessions.html:5
+msgid "确定退出所有设备并撤销应用授权吗？"
+msgstr "모든 기기에서 로그아웃하고 앱 권한을 해제할까요?"
+
+#: templates/accounts/shell.html:7
+msgid "账号设置"
+msgstr "계정 설정"
+
+#: templates/accounts/shell.html:14 templates/accounts/shell.html:16
+msgid "退出登录"
+msgstr "로그아웃"
+
+#: templates/accounts/shell.html:18
+msgid "属于你的节奏，始终相连。"
+msgstr "나만의 리듬, 언제나 연결됩니다."
+
+#: templates/accounts/verify.html:1
+msgid "验证邮箱"
+msgstr "이메일 인증"
+
+#: templates/accounts/verify.html:2
+msgid "再一步，就完成了"
+msgstr "이제 한 단계만 더"
+
+#: templates/accounts/verify.html:2
+msgid "确认你的邮箱。"
+msgstr "이메일을 확인하세요."
+
+#: templates/accounts/verify.html:2
+#, python-format
+msgid "将 %(email)s 与你的 OurTaiko 账号关联。"
+msgstr "%(email)s을(를) OurTaiko 계정에 연결합니다."
+
+#: templates/accounts/verify.html:2
+msgid "确认邮箱并激活账号"
+msgstr "이메일 인증 및 계정 활성화"
+
+#: templates/base.html:14
+msgid "跳到主要内容"
+msgstr "본문으로 건너뛰기"
+
+#: templates/oauth2_provider/authorize.html:1
+msgid "授权登录"
+msgstr "로그인 인증"
+
+#: templates/oauth2_provider/authorize.html:2
+msgid "通过 OurTaiko 继续"
+msgstr "OurTaiko로 계속"
+
+#: templates/oauth2_provider/authorize.html:2
+#, python-format
+msgid "连接 %(application)s"
+msgstr "%(application)s 연결"
+
+#: templates/oauth2_provider/authorize.html:2
+#, python-format
+msgid "以 %(nickname)s 的身份继续。"
+msgstr "%(nickname)s(으)로 계속합니다."
+
+#: templates/oauth2_provider/authorize.html:2
+msgid "这个应用申请以下权限"
+msgstr "이 앱이 다음 권한을 요청합니다"
+
+#: templates/oauth2_provider/authorize.html:2
+msgid "取消"
+msgstr "취소"
+
+#: templates/oauth2_provider/authorize.html:2
+msgid "同意并继续"
+msgstr "동의하고 계속"
+
+#: templates/oauth2_provider/authorize.html:2
+msgid "暂时无法连接"
+msgstr "지금 연결할 수 없습니다"
+
+#: templates/oauth2_provider/authorize.html:2
+msgid "返回账号中心"
+msgstr "계정 센터로 돌아가기"

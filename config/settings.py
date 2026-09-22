@@ -3,6 +3,7 @@ from pathlib import Path
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.translation import gettext_lazy as _
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,6 +33,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "accounts.middleware.AccountLocaleMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "accounts.middleware.ResponsePolicyMiddleware",
@@ -45,6 +47,7 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                "django.template.context_processors.i18n",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "accounts.context.site",
@@ -71,6 +74,8 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 LANGUAGE_CODE = "zh-hans"
+LANGUAGES = [("zh-hans", "简体中文"), ("en", "English"), ("ja", "日本語"), ("ko", "한국어")]
+LOCALE_PATHS = [BASE_DIR / "locale"]
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
@@ -122,7 +127,7 @@ OAUTH2_PROVIDER = {
     "OIDC_ISS_ENDPOINT": SSO_BASE_URL,
     "OAUTH2_VALIDATOR_CLASS": "accounts.oidc.AccountValidator",
     "PKCE_REQUIRED": True,
-    "SCOPES": {"openid": "确认你的账号身份", "profile": "读取你的昵称和登录名"},
+    "SCOPES": {"openid": _("确认你的账号身份"), "profile": _("读取你的昵称、登录名和偏好语言")},
     "DEFAULT_SCOPES": ["openid"],
     "ACCESS_TOKEN_EXPIRE_SECONDS": 3600,
     "AUTHORIZATION_CODE_EXPIRE_SECONDS": 60,

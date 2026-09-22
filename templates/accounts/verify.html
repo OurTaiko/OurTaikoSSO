@@ -1,2 +1,2 @@
-{% extends 'accounts/auth_shell.html' %}{% block title %}验证邮箱{% endblock %}{% block content %}
-<span class="eyebrow">ONE MORE STEP</span><h1>确认你的邮箱。</h1><p class="lead">将 {{ email }} 与你的 OurTaiko 账号关联。</p><form method="post">{% csrf_token %}<button class="button primary full">确认邮箱并激活账号</button></form>{% endblock %}
+{% extends 'accounts/auth_shell.html' %}{% load i18n %}{% block title %}{% translate '验证邮箱' %}{% endblock %}{% block content %}
+<span class="eyebrow">{% translate '再一步，就完成了' %}</span><h1>{% translate '确认你的邮箱。' %}</h1><p class="lead">{% blocktranslate with email=email %}将 {{ email }} 与你的 OurTaiko 账号关联。{% endblocktranslate %}</p><form method="post">{% csrf_token %}<button class="button primary full">{% translate '确认邮箱并激活账号' %}</button></form>{% endblock %}

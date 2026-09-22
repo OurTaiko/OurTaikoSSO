@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.utils.translation import gettext_lazy as _
 
 from .models import ClientRole, GameClient, User
 
@@ -7,7 +8,7 @@ from .models import ClientRole, GameClient, User
 @admin.register(User)
 class AccountAdmin(UserAdmin):
     fieldsets = UserAdmin.fieldsets + (
-        ("OurTaiko", {"fields": ("id", "nickname", "email_verified", "auth_version")}),
+        ("OurTaiko", {"fields": ("id", "nickname", "preferred_language", "email_verified", "auth_version")}),
     )
     readonly_fields = ("id", "auth_version")
     add_fieldsets = UserAdmin.add_fieldsets + (("OurTaiko", {"fields": ("nickname", "email")}),)
@@ -24,4 +25,4 @@ class ClientAdmin(admin.ModelAdmin):
 
 
 admin.site.register(ClientRole)
-admin.site.site_header = "OurTaiko 账号管理"
+admin.site.site_header = _("OurTaiko 账号管理")
