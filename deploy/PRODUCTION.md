@@ -1,5 +1,37 @@
 # Production deployment
 
+## Internationalization release (2026-09-22)
+
+- SSO `a4a3cb0`, Fanmade API `2011c90`, and frontend `665fbf7` are live.
+- SSO migration `accounts.0003_user_preferred_language` completed. All 8 existing
+  accounts received the default `zh-hans`. No account reimport or business schema
+  migration was needed. Signing keys, credentials and existing user data were retained.
+- The SSO image is `ourtaiko-sso:i18n-a4a3cb0`, also tagged `release`; the existing
+  1Panel Compose deployment remains in use. The API uses its existing systemd service.
+- [Frontend CI deployment](https://github.com/OurTaiko/Fanmade_Frontend/actions/runs/35776258424)
+  passed lint, tests, build and publishing. The site release points to
+  `releases/665fbf722b4ab633bfb6be61ed9b36c0db99fb9d`.
+- Production verification passed real OIDC login, default Chinese, saved preference
+  changes in English/Japanese/Korean/Chinese, live preference propagation to an
+  existing browser session and game token, localized song titles, mobile layout,
+  logout, and absence of browser script errors. Temporary verification identities
+  and their SSO tokens/browser sessions/business identities were removed.
+- Song title/subtitle selection is **preferred language → original field**.
+  Chinese is the default account preference, not an intermediate song-text fallback.
+
+Root-only release backup: `/var/backups/ourtaiko-i18n/20260922`. It contains a
+pre-migration SSO database dump (verified readable with `pg_restore --list`, not a
+restore drill), previous API binary, Compose file, revisions and frontend target.
+The previous SSO image is retained as `ourtaiko-sso:before-i18n-20260922`.
+The new column is additive: application rollback can retain it. Do not rerun the
+original identity import or restore an old business database for this release.
+
+The server could not authenticate a direct private GitHub fetch, so the exact
+already-pushed SSO/API commits were transferred in verified Git bundles over SSH
+and fast-forwarded. Frontend publishing used its existing CI credentials.
+
+## Existing production topology
+
 The SSO container is managed by **1Panel → Containers → Compose → ourtaiko-sso**.
 It runs the production Gunicorn image `ourtaiko-sso:release`, with a read-only
 filesystem and a non-root user, listening on `127.0.0.1:8090`.
