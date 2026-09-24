@@ -1,4 +1,6 @@
-bind = "127.0.0.1:8090"
+import os
+
+bind = os.getenv("SSO_LISTEN_ADDR", "127.0.0.1:8090")
 workers = 2
 worker_class = "gthread"
 threads = 4

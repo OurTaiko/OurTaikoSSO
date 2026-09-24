@@ -1,4 +1,13 @@
-# 1Panel production deployment
+# Deployment
+
+For the new portable **SSO + PostgreSQL** stack and the separately deployed
+Fanmade backend, see [Docker migration drill](DOCKER.md). The shared database
+Compose now belongs to this repository. `compose.postgres.legacy.yml` preserves
+the existing production data mounts and project identity; moving its source does
+not switch the live server. The instructions below describe the existing 1Panel
+deployment and remain unchanged until a production migration is requested.
+
+## Existing 1Panel production deployment
 
 Build the pinned dependency image with `docker build -t ourtaiko-sso:release .`.
 Import `deploy/compose.yml` into **1Panel → Containers → Compose**. The service
