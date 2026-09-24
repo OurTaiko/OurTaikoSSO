@@ -1,0 +1,58 @@
+# Restore/provision the external volumes and network before starting this stack.
+name: ourtaiko-sso
+services:
+  postgres:
+    image: postgres:18.6-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
+    container_name: ourtaiko-postgres
+    restart: unless-stopped
+    shm_size: 128mb
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    volumes:
+      - postgres:/var/lib/postgresql
+      - /etc/ourtaiko-sso/docker/postgres-password:/run/secrets/postgres_password:ro
+    ports: ['127.0.0.1:5432:5432']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d postgres']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [shared]
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+  sso:
+    image: ourtaiko-sso:release
+    build: /opt/ourtaiko-sso/src
+    container_name: ourtaiko-sso
+    restart: unless-stopped
+    depends_on:
+      postgres: {condition: service_healthy}
+    env_file:
+      - path: /etc/ourtaiko-sso/docker/sso.env
+        format: raw
+    environment:
+      SSO_LISTEN_ADDR: 0.0.0.0:8090
+      OIDC_PRIVATE_KEY_FILE: /app/.data/oidc-private.pem
+    volumes: ['sso-data:/app/.data']
+    ports: ['127.0.0.1:8090:8090']
+    read_only: true
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    healthcheck:
+      test: ['CMD', 'python', 'deploy/healthcheck.py']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks: [shared]
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+volumes:
+  postgres: {external: true, name: ourtaiko-postgres-data}
+  sso-data: {external: true, name: ourtaiko-sso-data}
+networks:
+  shared: {external: true, name: ourtaiko-shared}
