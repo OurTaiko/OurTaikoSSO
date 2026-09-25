@@ -18,9 +18,10 @@ Fanmade 镜像有 FFmpeg、ffprobe、cwebp，但没有 PostgreSQL 服务端。
 ## 当前适用范围
 
 这套脚本是 **本地开发环境迁移演练**，不会 SSH、推送代码、部署生产或恢复到已有数据库。
-旧生产的 1Panel `deploy/compose.yml` 和 host 网络行为保持原样。
+2026-09-24 已另行完成生产迁移，当前配置为 `deploy/compose.production.yml`，详见 [生产记录](PRODUCTION.md)。
+旧的 1Panel `deploy/compose.yml` 保留为历史 host 网络配置，不用于当前生产。
 原 Fanmade PostgreSQL 配置移到本仓库 `compose.postgres.legacy.yml`，保留原项目名和实际磁盘路径，
-仅把容器名改为已经在服务器使用的 `ourtaiko-postgres`。本次没有将新配置应用到生产。
+仅保留迁移前布局作参考；不要对当前生产执行该 legacy 配置。
 
 `docker_lab.py` 只接受原生 `ourtaiko_sso_dev` / `ourtaiko_fanmade_sso_dev`，要求 DEBUG、loopback，
 并检查原生 SSO 和 API 已停服，避免备份时上传。还需要停止其他开发写入程序。
