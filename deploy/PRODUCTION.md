@@ -48,11 +48,14 @@ Fanmade 9 用户 ID、26 谱面、51 成绩、15 封面、52 文件；这些是�
 
 ### 留存与回退边界
 
-旧 PostgreSQL 容器保留为 `ourtaiko-postgres-before-docker`，已停止且 restart=no；
-原 `/var/lib/ourtaiko-fanmade/postgres`、`/var/lib/ourtaiko-fanmade/files`、`/var/lib/ourtaiko-sso`
-保留为迁移前副本，**不再是活动数据位置**。旧镜像保留 `before-docker-migration` 标签。
-旧 `ourtaiko-fanmade` systemd 服务 inactive/disabled，单元和二进制保留。
-隔离预检的三个 stage 容器和 stage 卷已清理；当前生产卷与旧生产数据未删除。
+迁移验证完成后，按用户要求清理了旧 PostgreSQL 容器 `ourtaiko-postgres-before-docker`、
+三代旧 SSO 镜像及迁移前标签。原 `/var/lib/ourtaiko-fanmade/postgres`、
+`/var/lib/ourtaiko-fanmade/files`、`/var/lib/ourtaiko-sso` 和 `/opt/ourtaiko-fanmade/bin`
+也已删除；这些路径不再存在，**活动数据只在上表的三个 external 持久卷中**。
+旧 `ourtaiko-fanmade` systemd 单元仍 inactive/disabled，但其二进制已删除，不应重新启用。
+隔离预检的 stage 容器和 stage 卷已清理。当前镜像、生产持久卷、完整备份、源码和前端工具链保留。
+删除前再次校验最终备份的全部 SHA-256，并确认归档包含旧文件、签名密钥和二进制。
+服务器清理记录：`/var/backups/ourtaiko-docker-migration/cleanup-20260925.json`。
 
 迁移发布后已经恢复写入，旧库是切换前快照。**不能直接启动旧库当作无损回退**；
 需要先停写并备份当前新库/文件，再规划应用回退或数据恢复。旧 `compose.postgres.legacy.yml`
