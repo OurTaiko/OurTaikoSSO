@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 LAB = ROOT / ".data/unification-lab"
 DOCKER = shutil.which("docker") or "/Users/kirisamevanilla/.docker/bin/docker"
 BEFORE = "ourtaiko-sso:unification-before"
-AFTER = "ourtaiko-sso:unification-dev"
+AFTER = "ourtaiko-sso:unification-stage1"
 PG = "ourtaiko-unification-lab-postgres-1"
 NETWORK = "ourtaiko-unification-lab_default"
 

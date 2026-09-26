@@ -68,10 +68,10 @@ class Command(BaseCommand):
                 "allow_web": True,
             },
         )
-        # Existing private service configs continue through their migrated legacy aliases.
-        config.setdefault(
-            "fanmade", {"serviceId": fanmade.client_id, "serviceKey": config["fanmadeWeb"]["clientSecret"]}
-        )
+        config["fanmade"] = {
+            "serviceId": fanmade.client_id,
+            "serviceKey": config["fanmadeWeb"]["clientSecret"],
+        }
         if not Application.objects.filter(client_id="ese").exists():
             secret = secrets.token_hex(32)
             ese = Application.objects.create(

@@ -27,7 +27,7 @@ class AccountAdmin(UserAdmin):
     list_display = ("username", "nickname", "email_verified", "is_active")
 
 
-ACCESS_FIELDS = ("enabled", "allow_game", "allow_profiles", "allow_web", "accept_legacy")
+ACCESS_FIELDS = ("enabled", "allow_game", "allow_profiles", "allow_web")
 
 
 class UnifiedApplicationForm(forms.ModelForm):
@@ -35,11 +35,6 @@ class UnifiedApplicationForm(forms.ModelForm):
     allow_game = forms.BooleanField(label="允许游戏登录和会话接口", required=False)
     allow_profiles = forms.BooleanField(label="允许用户资料查询", required=False)
     allow_web = forms.BooleanField(label="允许网站令牌查询和撤销", required=False)
-    accept_legacy = forms.BooleanField(
-        label="接受迁移前的服务凭据",
-        required=False,
-        help_text="仅用于已有服务的过渡。关闭前须先更新业务后端的凭据并验证。",
-    )
 
     class Meta:
         model = Application
@@ -69,24 +64,9 @@ class UnifiedApplicationForm(forms.ModelForm):
     def clean(self):
         data = super().clean()
         if data.get("client_type") != Application.CLIENT_CONFIDENTIAL and any(
-            data.get(field) for field in ("allow_game", "allow_profiles", "allow_web", "accept_legacy")
+            data.get(field) for field in ("allow_game", "allow_profiles", "allow_web")
         ):
             raise forms.ValidationError("内部接口只允许能够保管密钥的 confidential 后端应用。")
-        if (
-            data.get("accept_legacy")
-            and not ApplicationAccess.objects.filter(
-                application_id=self.instance.pk, legacy_service_id__isnull=False
-            ).exists()
-        ):
-            self.add_error("accept_legacy", "此应用没有迁移前的服务凭据。")
-        client_id = data.get("client_id")
-        if (
-            client_id
-            and ApplicationAccess.objects.filter(legacy_service_id=client_id)
-            .exclude(application_id=self.instance.pk)
-            .exists()
-        ):
-            self.add_error("client_id", "此 ID 已被迁移前的服务使用。")
         return data
 
 
@@ -98,11 +78,10 @@ class UnifiedApplicationAdmin(admin.ModelAdmin):
         ("应用", {"fields": ("name", "client_id", "enabled", "credentials")}),
         ("登录方式", {"fields": ("client_type", "authorization_grant_type", "redirect_uris", "algorithm")}),
         ("后端接口权限", {"fields": ("allow_game", "allow_profiles", "allow_web")}),
-        ("迁移兼容", {"fields": ("legacy_id", "accept_legacy")}),
     )
 
     def get_readonly_fields(self, request, obj=None):
-        return ("credentials", "legacy_id", "client_id") if obj else ("credentials", "legacy_id")
+        return ("credentials", "client_id") if obj else ("credentials",)
 
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
         if object_id is None:
@@ -121,13 +100,6 @@ class UnifiedApplicationAdmin(admin.ModelAdmin):
             '<a href="{}">重置应用密钥</a>（无法查看原文）',
             reverse("admin:oauth2_provider_application_reset_secret", args=[obj.pk]),
         )
-
-    @admin.display(description="旧服务 ID")
-    def legacy_id(self, obj):
-        if not obj or not obj.pk:
-            return "无（新应用不需要 Game client）"
-        access = ApplicationAccess.objects.filter(application=obj).first()
-        return access.legacy_service_id if access and access.legacy_service_id else "无"
 
     def get_urls(self):
         return [
@@ -181,9 +153,7 @@ class UnifiedApplicationAdmin(admin.ModelAdmin):
                 secret = secrets.token_hex(32)
                 obj.client_secret, obj.hash_client_secret = secret, True
                 obj.save(update_fields=["client_secret", "hash_client_secret"])
-                # Rotating the canonical secret also revokes its compatibility credential.
-                ApplicationAccess.objects.filter(application=obj).update(accept_legacy=False)
-                self.log_change(request, obj, "Reset application secret and disabled legacy credential")
+                self.log_change(request, obj, "Reset application secret")
         return self.secret_response(request, obj, secret)
 
 

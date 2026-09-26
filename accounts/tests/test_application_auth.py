@@ -5,7 +5,6 @@ from django.utils import timezone
 from oauth2_provider.models import AccessToken, Application
 
 from accounts.models import ApplicationAccess, ClientRole, GameSession, User
-from accounts.security import digest
 
 
 class UnifiedAuthenticationTests(TestCase):
@@ -25,9 +24,6 @@ class UnifiedAuthenticationTests(TestCase):
             allow_game=True,
             allow_web=True,
             allow_profiles=True,
-            legacy_service_id="fanmade",
-            legacy_secret_hash=digest("a" * 64),
-            accept_legacy=True,
         )
         self.token = AccessToken.objects.create(
             application=self.app,
@@ -46,10 +42,8 @@ class UnifiedAuthenticationTests(TestCase):
             HTTP_X_SERVICE_KEY=key,
         )
 
-    def test_alias_and_canonical_share_sessions_and_live_roles(self):
-        login = self.api(
-            "game/login", {"username": "player", "password": "Testing!4279"}, "fanmade", "a" * 64
-        )
+    def test_canonical_credentials_share_sessions_and_live_roles(self):
+        login = self.api("game/login", {"username": "player", "password": "Testing!4279"})
         self.assertEqual(login.status_code, 200)
         body = {"accessToken": login.json()["accessToken"]}
         self.assertEqual(GameSession.objects.get().client_id, self.app.pk)
@@ -63,7 +57,6 @@ class UnifiedAuthenticationTests(TestCase):
         self.assertFalse(
             self.api("web/introspect", {"accessToken": self.token.token}).json()["user"]["isAdmin"]
         )
-        self.access.accept_legacy = False
         self.access.save()
         self.assertEqual(self.api(client_id="fanmade", key="a" * 64).status_code, 401)
         self.assertEqual(self.api("game/introspect", body).status_code, 200)
@@ -117,7 +110,7 @@ class UnifiedAuthenticationTests(TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
-    def test_application_id_never_falls_back_to_another_legacy_identity(self):
+    def test_application_id_cannot_authenticate_with_another_secret(self):
         Application.objects.create(
             client_id="fanmade",
             name="Collision",

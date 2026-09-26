@@ -4,7 +4,9 @@ from html.parser import HTMLParser
 from urllib.parse import urlsplit
 
 import requests
-from unification_lab import AFTER, shell
+from unification_lab import shell
+
+AFTER = "ourtaiko-sso:unification-dev"
 
 ORIGIN = "http://127.0.0.1:28080"
 SSO = "http://127.0.0.1:28090"
@@ -74,12 +76,8 @@ def main():
             "from accounts.models import ClientRole\nClientRole.objects.filter(client__client_id='fanmade-web').update(is_admin=True)",
         )
     print("PASS: live role removal reaches the existing Fanmade session", flush=True)
-    # Both kinds of existing sessions must survive turning off legacy authentication.
+    # Existing web and game sessions use only the canonical application credential.
     try:
-        shell(
-            AFTER,
-            "from accounts.models import ApplicationAccess\nApplicationAccess.objects.filter(application__client_id='fanmade-web').update(accept_legacy=False)",
-        )
         rejected = browser.post(
             SSO + "/internal/v1/users/lookup",
             json={"userIds": []},
@@ -98,17 +96,13 @@ def main():
         )
         print("PASS: one non-hex Application credential serves web + game; old key disabled", flush=True)
     finally:
-        shell(
-            AFTER,
-            "from accounts.models import ApplicationAccess\nApplicationAccess.objects.filter(application__client_id='fanmade-web').update(accept_legacy=True)",
-        )
         browser.post(
             SSO + "/internal/v1/game/revoke",
             json={"accessToken": native["accessToken"]},
             headers={"X-Service-ID": "fanmade-web", "X-Service-Key": "Opaque-Application_Secret" * 3},
             timeout=10,
         )
-    print("PASS: live compatibility switch restored for local review", flush=True)
+    print("PASS: final application-only authentication verified", flush=True)
 
 
 if __name__ == "__main__":

@@ -33,7 +33,6 @@ EMAIL_HOST_USER=<SMTP account>
 EMAIL_HOST_PASSWORD=<SMTP password>
 EMAIL_USE_TLS=true
 DEFAULT_FROM_EMAIL=OurTaiko <no-reply@example.com>
-FANMADE_SERVICE_KEY=<64 random hex characters>
 FANMADE_OIDC_CLIENT_ID=ourtaiko-fanmade-web
 FANMADE_OIDC_CLIENT_SECRET=<strong random secret>
 FANMADE_REDIRECT_URI=https://fanmade.ourtaiko.org/api/v1/auth/sso/callback

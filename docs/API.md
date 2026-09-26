@@ -69,7 +69,7 @@ OIDC 端点由发现文档提供，scope 为 `openid profile`。标准登录使�
 
 统一版本直接使用调用方 Application 验证网站 token 的归属，不再另建 GameClient 或配置 web_client_id。应用必须是 confidential，且开启网站令牌接口权限；迁移过程见 [APPLICATION-MIGRATION.md](APPLICATION-MIGRATION.md)。
 
-- `POST /internal/v1/web/introspect`：`{accessToken}`；返回与游戏身份查询一致的 `{user, expiresAt}`。只接受绑定应用的有效 OAuth access token，拒绝其他业务令牌和游戏令牌。isAdmin 取对应 GameClient 的 ClientRole。
+- `POST /internal/v1/web/introspect`：`{accessToken}`；返回与游戏身份查询一致的 `{user, expiresAt}`。只接受绑定应用的有效 OAuth access token，拒绝其他业务令牌和游戏令牌。isAdmin 取对应 Application 的 ClientRole。
 - `POST /internal/v1/web/revoke`：`{accessToken}`；撤销本应用网站 access token，重复调用仍返回 `{ok:true}`。
 - `POST /internal/v1/users/search`：`{query, after?}`；按昵称包含文本搜索，返回 `{userIds,next}`，每页最多 1000 条，next 为空表示结束；不检索登录名或邮箱。
 

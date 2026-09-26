@@ -60,21 +60,8 @@ class User(AbstractUser):
         return self.nickname or self.username
 
 
-class GameClient(models.Model):
-    """Frozen pre-unification records, retained only for migration audit/rollback."""
-
-    id = models.SlugField(primary_key=True, max_length=32)
-    name = models.CharField(max_length=80)
-    secret_hash = models.CharField(max_length=64)
-    enabled = models.BooleanField(default=True)
-    web_client_id = models.CharField(max_length=100, blank=True)
-
-    def __str__(self):
-        return self.name
-
-
 class ApplicationAccess(models.Model):
-    """Capabilities and temporary legacy credentials of ONE OAuth Application."""
+    """Capabilities of the canonical OAuth Application."""
 
     application = models.OneToOneField(
         "oauth2_provider.Application", on_delete=models.CASCADE, related_name="service_access"
@@ -83,9 +70,6 @@ class ApplicationAccess(models.Model):
     allow_game = models.BooleanField(default=False, verbose_name="允许游戏登录和会话接口")
     allow_profiles = models.BooleanField(default=False, verbose_name="允许用户资料查询")
     allow_web = models.BooleanField(default=False, verbose_name="允许网站令牌查询和撤销")
-    legacy_service_id = models.SlugField(max_length=32, null=True, blank=True, unique=True, editable=False)
-    legacy_secret_hash = models.CharField(max_length=64, blank=True, editable=False)
-    accept_legacy = models.BooleanField(default=False, verbose_name="接受迁移前的服务凭据")
 
     class Meta:
         verbose_name = "应用接口权限"

@@ -4,7 +4,7 @@ from django.contrib.auth.models import Permission
 from django.test import Client, TestCase
 from oauth2_provider.models import Application
 
-from accounts.models import ApplicationAccess, User
+from accounts.models import User
 
 
 class ClientAdminTests(TestCase):
@@ -99,18 +99,19 @@ class ClientAdminTests(TestCase):
         response = self.client.post(self.add_url, {**self.data, "client_type": "public"})
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Application.objects.exists())
-        response = self.client.post(self.add_url, {**self.data, "accept_legacy": "on"})
-        self.assertFalse(Application.objects.exists())
+        form = self.client.get(self.add_url)
+        self.assertNotContains(form, "accept_legacy")
+        self.assertNotContains(form, "迁移兼容")
 
-    def test_rotation_disables_legacy_and_edit_keeps_oauth_config(self):
-        from accounts.security import digest
-
+    def test_rotation_preserves_registered_oauth_configuration(self):
         old = self.create_service()
-        ApplicationAccess.objects.filter(application=self.app).update(
-            accept_legacy=True, legacy_service_id="old-ese", legacy_secret_hash=digest("a" * 64)
-        )
+        self.app.authorization_grant_type = "authorization-code"
+        self.app.redirect_uris = "https://example.test/callback"
+        self.app.save()
         response = self.client.post(self.reset_url)
         new = response.context_data["application_secret"]
-        self.assertFalse(ApplicationAccess.objects.get(application=self.app).accept_legacy)
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.redirect_uris, "https://example.test/callback")
+        self.assertEqual(self.app.authorization_grant_type, "authorization-code")
         self.assertEqual(self.lookup(old).status_code, 401)
         self.assertEqual(self.lookup(new).status_code, 200)

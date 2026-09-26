@@ -1,5 +1,22 @@
 # Production deployment
 
+## Application 统一与清理（2026-09-25）
+
+第一阶段已部署 SSO `91854aa`、Fanmade `3fcc565`，SSO 执行 accounts.0004。
+Fanmade 服务调用改为复用原 OAuth Client ID/Secret；应用身份、回调、签名密钥、用户和业务数据保持不变。
+公网 OIDC/PKCE、游戏登录、实时管理员角色、旧凭据拒绝验证通过，临时测试身份已清理。
+镜像 `ourtaiko-sso:unified-stage1` 和 `ourtaiko-fanmade:unified` 已保留。
+
+第二阶段由本地提交删除兼容代码及管理界面，通过 accounts.0005 删除旧表和凭据字段。
+最终目标镜像为 `ourtaiko-sso:unified-final`，部署前重新备份、执行迁移后重建 SSO 容器。
+执行结果以服务器受限备份目录的 `latest-stage1` / `latest-final` 指针与结果 JSON 为准，
+不能仅凭源码包含 migration 就判断生产已执行。
+备份根目录 `/var/backups/ourtaiko-application-unification/` 包含各阶段数据库、配置和核对记录；
+第一阶段 SSO 备份已实际恢复到独立临时数据库并逐表对比。详细步骤与回退边界见
+[Application 迁移说明](../docs/APPLICATION-MIGRATION.md)。ESE 未部署，HachiCats 应用未修改。
+
+以下 Docker 迁移镜像编号是此前历史快照，当前 release 已随本次更新。
+
 ## Docker 双栈迁移（2026-09-24）
 
 已从“SSO 容器 + 独立 PostgreSQL 容器 + Fanmade systemd”切换为两套 Compose：

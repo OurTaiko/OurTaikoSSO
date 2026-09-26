@@ -38,7 +38,7 @@ def service_endpoint(view):
         key = request.headers.get("X-Service-Key", "")
         if not service_id or not key or len(service_id) > 100 or len(key) > 1024:
             return problem(401, "SERVICE_UNAUTHORIZED", "业务服务凭证无效")
-        # A canonical Application ID always wins; never fall back to another identity.
+        # The OAuth Application is the only service identity.
         client = Application.objects.filter(client_id=service_id).first()
         access = ApplicationAccess.objects.filter(application=client).first() if client else None
         authenticated = bool(
@@ -48,21 +48,6 @@ def service_endpoint(view):
             and client.hash_client_secret
             and check_password(key, client.client_secret)
         )
-        legacy = (
-            ApplicationAccess.objects.select_related("application")
-            .filter(
-                legacy_service_id=service_id,
-                accept_legacy=True,
-                enabled=True,
-            )
-            .first()
-        )
-        if not authenticated and legacy and (client is None or legacy.application_id == client.pk):
-            if re.fullmatch(r"[0-9a-f]{64}", key) and secrets.compare_digest(
-                legacy.legacy_secret_hash, digest(key)
-            ):
-                client, access = legacy.application, legacy
-                authenticated = client.client_type == Application.CLIENT_CONFIDENTIAL
         if not authenticated:
             return problem(401, "SERVICE_UNAUTHORIZED", "业务服务凭证无效")
         capability = (

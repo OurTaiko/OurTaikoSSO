@@ -1,7 +1,8 @@
 from importlib import import_module
 
-from django.apps import apps
 from django.core.management.base import BaseCommand, CommandError
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
 from django.db.migrations.recorder import MigrationRecorder
 
 
@@ -16,6 +17,17 @@ class Command(BaseCommand):
                 "Already migrated; legacy records are now historical and are not a new migration plan."
             )
             return
+        # Read the historical schema; current runtime no longer contains GameClient.
+        apps = (
+            MigrationExecutor(connection)
+            .loader.project_state(
+                [
+                    ("accounts", "0003_user_preferred_language"),
+                    ("oauth2_provider", "0022_refreshtoken_token_family_index"),
+                ]
+            )
+            .apps
+        )
         migration = import_module("accounts.migrations.0004_unified_applications")
         try:
             plan = migration.migration_plan(apps, "default")
