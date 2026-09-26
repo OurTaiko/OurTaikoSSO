@@ -13,7 +13,7 @@ from django.utils import timezone
 from jwcrypto import jwk, jwt
 from oauth2_provider.models import AccessToken, Application
 
-from accounts.models import ClientRole, GameClient, GameSession, User
+from accounts.models import ApplicationAccess, ClientRole, GameSession, User
 from accounts.security import digest
 
 PASSWORD = "Rhythm!Dev4279"
@@ -28,8 +28,14 @@ class AccountTests(TestCase):
             email_verified=True,
             password=PASSWORD,
         )
-        self.fanmade = GameClient.objects.create(id="fanmade", name="Fanmade", secret_hash=digest("a" * 64))
-        self.ese = GameClient.objects.create(id="ese", name="ESE", secret_hash=digest("b" * 64))
+        self.fanmade = self.service("fanmade", "a" * 64)
+        self.ese = self.service("ese", "b" * 64)
+
+    def service(self, client_id, secret):
+        app = Application.objects.create(client_id=client_id, name=client_id, client_secret=secret,
+            client_type="confidential", authorization_grant_type="authorization-code", algorithm="RS256")
+        ApplicationAccess.objects.create(application=app, allow_game=True, allow_profiles=True, allow_web=True)
+        return app
 
     def api(self, path, body, service="fanmade", key="a" * 64, **headers):
         return self.client.post(
@@ -69,8 +75,7 @@ class AccountTests(TestCase):
             self.api("game/introspect", {"accessToken": token}, service="ese", key="b" * 64).status_code, 401
         )
         self.assertEqual(self.api("game/introspect", {"accessToken": token}).status_code, 200)
-        self.fanmade.enabled = False
-        self.fanmade.save()
+        ApplicationAccess.objects.filter(application=self.fanmade).update(enabled=False)
         self.assertEqual(self.api("game/introspect", {"accessToken": token}).status_code, 401)
 
     def test_admin_privileges_are_per_application(self):
@@ -371,9 +376,7 @@ class AccountTests(TestCase):
                 self.assertEqual(self.client.get(path).status_code, 200)
 
     def test_web_bridge_is_bound_to_application_and_revoked_on_password_change(self):
-        application = self.application()
-        self.fanmade.web_client_id = application.client_id
-        self.fanmade.save()
+        application = self.fanmade
         token = AccessToken.objects.create(
             user=self.user,
             application=application,
@@ -396,9 +399,7 @@ class AccountTests(TestCase):
         self.assertEqual(self.api("web/introspect", body).status_code, 401)
 
     def test_web_bridge_revoke_and_expiry(self):
-        application = self.application()
-        self.fanmade.web_client_id = application.client_id
-        self.fanmade.save()
+        application = self.fanmade
         token = AccessToken.objects.create(
             user=self.user,
             application=application,

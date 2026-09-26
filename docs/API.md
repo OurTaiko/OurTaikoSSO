@@ -2,7 +2,7 @@
 
 本地根地址 `http://127.0.0.1:8090`。以下内部接口只允许业务后端调用，不是直接提供给 YataiDON 的公开入口。
 
-全部使用 POST JSON；要求 `X-Service-ID` 和 `X-Service-Key`，不接受浏览器 Origin，也不读取浏览器 Cookie。密钥在数据库仅存 SHA-256；开发用明文位于本机忽略文件 `.data/dev-clients.json`。正式环境通过私有网络或 HTTPS 调用。密钥轮换时须同步更新对应后端配置。
+全部使用 POST JSON；要求 `X-Service-ID` 和 `X-Service-Key`，不接受浏览器 Origin，也不读取浏览器 Cookie。统一 Application 版本（本地待发布）中，头部填写 Application 的 Client ID/Client Secret，密钥由 OAuth Toolkit 哈希存储；迁移前的服务密钥仅在兼容开关开启时按原 SHA-256 哈希验证。开发用明文位于本机忽略文件 `.data/dev-clients.json`。正式环境通过私有网络或 HTTPS 调用。密钥轮换时须同步更新对应后端配置。
 
 | 路径 | 请求 | 响应 |
 |---|---|---|
@@ -51,6 +51,7 @@ JSON 错误格式 `{code,message}`。旧 Fanmade 网关可补充它自己的 `re
 | 401 | SERVICE_UNAUTHORIZED | 业务服务密钥错误或服务停用 |
 | 401 | LOGIN_INVALID | 登录凭证错误、账号未激活或停用 |
 | 401 | UNAUTHORIZED | 游戏 token 过期、撤销或服务不匹配 |
+| 403 | SERVICE_FORBIDDEN | Application 未获准使用该类内部接口 |
 | 403 | ORIGIN_INVALID | 浏览器不能直接调用内部接口 |
 | 405 | METHOD_NOT_ALLOWED | 使用了 POST 以外的方法 |
 | 415 | CONTENT_TYPE_INVALID | 非 JSON 请求 |
@@ -66,7 +67,7 @@ OIDC 端点由发现文档提供，scope 为 `openid profile`。标准登录使�
 
 ## Fanmade 网站会话接入
 
-GameClient 新增 `web_client_id`，绑定该业务后端可验证的 confidential OAuth 应用。
+统一版本直接使用调用方 Application 验证网站 token 的归属，不再另建 GameClient 或配置 web_client_id。应用必须是 confidential，且开启网站令牌接口权限；迁移过程见 [APPLICATION-MIGRATION.md](APPLICATION-MIGRATION.md)。
 
 - `POST /internal/v1/web/introspect`：`{accessToken}`；返回与游戏身份查询一致的 `{user, expiresAt}`。只接受绑定应用的有效 OAuth access token，拒绝其他业务令牌和游戏令牌。isAdmin 取对应 GameClient 的 ClientRole。
 - `POST /internal/v1/web/revoke`：`{accessToken}`；撤销本应用网站 access token，重复调用仍返回 `{ok:true}`。

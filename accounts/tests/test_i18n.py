@@ -5,8 +5,7 @@ from django.test import Client, TestCase
 from django.utils import timezone, translation
 from oauth2_provider.models import AccessToken, Application
 
-from accounts.models import GameClient, User
-from accounts.security import digest
+from accounts.models import ApplicationAccess, User
 
 
 class LanguageTests(TestCase):
@@ -19,12 +18,10 @@ class LanguageTests(TestCase):
             client_type="confidential",
             authorization_grant_type="authorization-code",
         )
-        self.service = GameClient.objects.create(
-            id="language-test",
-            name="Test",
-            secret_hash=digest("a" * 64),
-            web_client_id=self.app.client_id,
-        )
+        self.app.client_secret = "a" * 64
+        self.app.save()
+        ApplicationAccess.objects.create(application=self.app, allow_game=True, allow_web=True, allow_profiles=True)
+        self.service = self.app
         self.token = AccessToken.objects.create(
             user=self.user,
             application=self.app,
@@ -91,7 +88,7 @@ class LanguageTests(TestCase):
                 "/internal/v1/web/introspect",
                 {"accessToken": self.token.token},
                 content_type="application/json",
-                HTTP_X_SERVICE_ID=self.service.id,
+                HTTP_X_SERVICE_ID=self.service.client_id,
                 HTTP_X_SERVICE_KEY="a" * 64,
             )
             self.assertEqual(response.json()["user"]["preferredLanguage"], language)
@@ -106,7 +103,7 @@ class LanguageTests(TestCase):
             "/internal/v1/users/lookup",
             {"userIds": [self.user.pk]},
             content_type="application/json",
-            HTTP_X_SERVICE_ID=self.service.id,
+            HTTP_X_SERVICE_ID=self.service.client_id,
             HTTP_X_SERVICE_KEY="a" * 64,
         ).json()
         self.assertNotIn("preferredLanguage", public["users"][0])

@@ -5,8 +5,9 @@ from urllib.parse import urlsplit
 import psycopg
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from oauth2_provider.models import Application
 
-from accounts.models import ClientRole, GameClient, User
+from accounts.models import ClientRole, User
 
 
 class Command(BaseCommand):
@@ -26,7 +27,7 @@ class Command(BaseCommand):
             ).fetchall()
         imported = skipped = 0
         with transaction.atomic():
-            client = GameClient.objects.filter(pk="fanmade").first()
+            client = Application.objects.filter(client_id=os.getenv("FANMADE_OIDC_CLIENT_ID", "ourtaiko-fanmade-web")).first()
             if not client:
                 raise CommandError("Run provision_fanmade first to create the Fanmade service client.")
             for uid, username, nickname, password, email, verified, admin, created in rows:

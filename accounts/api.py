@@ -5,14 +5,15 @@ from datetime import timedelta
 from functools import wraps
 
 from django.contrib.auth import authenticate
+from django.contrib.auth.hashers import check_password
 from django.db import transaction
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.debug import sensitive_post_parameters
-from oauth2_provider.models import AccessToken
+from oauth2_provider.models import AccessToken, Application
 
-from .models import ClientRole, GameClient, GameSession, User
+from .models import ApplicationAccess, ClientRole, GameSession, User
 from .security import digest, login_allowed
 
 TOKEN_TTL = 7 * 86400
@@ -33,14 +34,46 @@ def service_endpoint(view):
             return response
         if request.headers.get("Origin"):
             return problem(403, "ORIGIN_INVALID", "此接口仅供业务后端调用")
-        client = GameClient.objects.filter(pk=request.headers.get("X-Service-ID", ""), enabled=True).first()
+        service_id = request.headers.get("X-Service-ID", "")
         key = request.headers.get("X-Service-Key", "")
-        if (
-            not client
-            or not re.fullmatch(r"[0-9a-f]{64}", key)
-            or not secrets.compare_digest(client.secret_hash, digest(key))
-        ):
+        if not service_id or not key or len(service_id) > 100 or len(key) > 1024:
             return problem(401, "SERVICE_UNAUTHORIZED", "业务服务凭证无效")
+        # A canonical Application ID always wins; never fall back to another identity.
+        client = Application.objects.filter(client_id=service_id).first()
+        access = ApplicationAccess.objects.filter(application=client).first() if client else None
+        authenticated = bool(
+            access
+            and access.enabled
+            and client.client_type == Application.CLIENT_CONFIDENTIAL
+            and client.hash_client_secret
+            and check_password(key, client.client_secret)
+        )
+        legacy = (
+            ApplicationAccess.objects.select_related("application")
+            .filter(
+                legacy_service_id=service_id,
+                accept_legacy=True,
+                enabled=True,
+            )
+            .first()
+        )
+        if not authenticated and legacy and (client is None or legacy.application_id == client.pk):
+            if re.fullmatch(r"[0-9a-f]{64}", key) and secrets.compare_digest(
+                legacy.legacy_secret_hash, digest(key)
+            ):
+                client, access = legacy.application, legacy
+                authenticated = client.client_type == Application.CLIENT_CONFIDENTIAL
+        if not authenticated:
+            return problem(401, "SERVICE_UNAUTHORIZED", "业务服务凭证无效")
+        capability = (
+            "allow_game"
+            if view.__name__ in {"game_login", "introspect", "revoke"}
+            else "allow_web"
+            if view.__name__ in {"web_introspect", "web_revoke"}
+            else "allow_profiles"
+        )
+        if not getattr(access, capability):
+            return problem(403, "SERVICE_FORBIDDEN", "此应用未获准使用该接口")
         if request.content_type != "application/json":
             return problem(415, "CONTENT_TYPE_INVALID", "请使用 JSON")
         try:
@@ -149,15 +182,13 @@ def web_session(client, body):
     token = body.get("accessToken")
     if set(body) != {"accessToken"} or not isinstance(token, str) or not 1 <= len(token) <= 4096:
         return None
-    if not client.web_client_id:
-        return None
     from hashlib import sha256
 
     return (
         AccessToken.objects.select_related("user")
         .filter(
             token_checksum=sha256(token.encode()).hexdigest(),
-            application__client_id=client.web_client_id,
+            application=client,
             expires__gt=timezone.now(),
             user__is_active=True,
         )

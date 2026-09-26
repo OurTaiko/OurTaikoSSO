@@ -329,7 +329,7 @@ def connections(request):
 @require_POST
 def revoke_connection(request):
     key = request.POST.get("key")
-    if request.POST.get("kind") == "game":
+    if request.POST.get("kind") == "game" and str(key).isdigit():
         GameSession.objects.filter(user=request.user, client_id=key).delete()
     elif request.POST.get("kind") == "web" and str(key).isdigit():
         for model in [RefreshToken, AccessToken, IDToken, Grant]:

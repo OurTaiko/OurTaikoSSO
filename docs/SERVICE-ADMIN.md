@@ -1,19 +1,25 @@
-# 在管理页面登记游戏后端
+# 在管理页面登记业务应用
 
-使用有 Game client 添加/修改权限的 SSO 管理员登录 `/admin/`。
+以下为统一 Application 的本地新版，尚未发布到生产。生产更新必须等待用户批准。
+完整升级、验证和回退过程见 [APPLICATION-MIGRATION.md](APPLICATION-MIGRATION.md)。
 
-1. 进入 Accounts → Game clients → 增加。
-2. ESE 填写 Id `ese`、Name `ESE`，保持 Enabled 勾选，Web client id 留空。
-3. 保存后复制页面显示的 `SSO_SERVICE_ID` / `SSO_SERVICE_KEY`，写入 ESE 服务器的私有环境文件。
-4. ESE 的 `SSO_ISSUER` 设置为 `https://sso.ourtaiko.org`，数据库配置仍指向 ESE 自己的 PostgreSQL。
-5. 用 ESE 所在目录的 Compose 配置重新创建后端容器，让新环境变量生效。
+1. 使用有 Application 添加/修改权限的 SSO 管理员登录 `/admin/`，进入 Applications。
+2. 创建应用，填写名称、唯一 Client ID，后端应用选 confidential。
+3. 网站选“网站登录”，填写精确回调；仅后端的服务选“仅后端接口”，回调留空。
+4. 按业务需要启用游戏接口、用户资料查询、网站令牌查询权限。
+5. 保存后将只显示一次的密钥存入业务后端私有配置。网站登录使用
+   `SSO_CLIENT_ID` / `SSO_CLIENT_SECRET`，内部接口使用
+   `SSO_SERVICE_ID` / `SSO_SERVICE_KEY`，两者填写同一份 Application ID/Secret。
+6. 应用级管理员在 Client roles 中选择用户和 Application，勾选 Is admin。
+   业务后端必须读取并执行这个角色，单纯添加角色不会改变尚未接入的业务代码。
 
-密钥由服务器随机生成，仅在保存成功的响应中显示。数据库只保存 SHA-256 哈希，
-原文不进入会话、消息或管理员审计日志。不要刷新/重新提交密钥结果页；离开后不能查看原文。
-丢失密钥时进入该服务的设置，点击“重置服务密钥”，确认后保存新密钥并更新业务后端。
-重置立即使旧服务密钥失效，但不删除已有游戏会话。普通编辑不更换密钥。
-重置操作受管理员修改权限与 CSRF 保护，并记录不含密钥的审计日志。
+普通编辑不会改变密钥。重置密钥会使旧 Application 密钥失效，并关闭迁移前的服务凭据；
+必须更新所有调用方并重建容器或重新部署。原密钥不能找回。
 
-ESE 没有网站 OAuth 登录需求，无需添加 OAuth Toolkit Application。
-Fanmade 的既有部署通过 `provision_fanmade` 命令登记游戏服务和网站 OAuth Application；
-该命令仍保留，管理界面更新不会重新生成既有服务的密钥。
+现有 Fanmade 通过迁移合并到原 OAuth Application，无需重新登记。旧服务凭据只用于过渡，
+更新后端并验证后关闭兼容开关。ESE 尚未部署，不安排生产迁移；首次部署直接创建一个
+Client ID 为 `ese` 的后端 Application，新生成的 64 位 hex 密钥兼容其现有配置格式。
+ESE 只需配置 SERVICE 两个变量，数据库仍指向它自己的 PostgreSQL。
+
+`provision_fanmade` 保留为旧部署脚本的兼容入口，不再创建 GameClient；它仍接受旧式双凭据
+以供过渡。新接入使用上述 Application 页面，不需要额外生成服务密钥。

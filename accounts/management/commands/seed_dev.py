@@ -7,8 +7,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from oauth2_provider.models import Application
 
-from accounts.models import GameClient, User
-from accounts.security import digest
+from accounts.models import ApplicationAccess, User
 
 
 class Command(BaseCommand):
@@ -22,16 +21,6 @@ class Command(BaseCommand):
         data = settings.BASE_DIR / ".data"
         credentials = data / "dev-clients.json"
         config = json.loads(credentials.read_text()) if credentials.exists() else {}
-        for client_id, name in [("fanmade", "OurTaiko Fanmade"), ("ese", "Every Song Ever")]:
-            if GameClient.objects.filter(pk=client_id).exists():
-                if client_id not in config:
-                    raise CommandError(
-                        f"Client {client_id} exists but its local secret file is absent; refusing to rotate silently."
-                    )
-                continue
-            key = secrets.token_hex(32)
-            GameClient.objects.create(id=client_id, name=name, secret_hash=digest(key))
-            config[client_id] = {"serviceId": client_id, "serviceKey": key}
         if not User.objects.filter(username="ssoDev").exists():
             password = secrets.token_urlsafe(18)
             User.objects.create_user(
@@ -70,7 +59,35 @@ class Command(BaseCommand):
             config["fanmadeWeb"] = {"clientId": "ourtaiko-fanmade-web", "clientSecret": secret}
         if "fanmadeWeb" not in config:
             raise CommandError("Fanmade web client secret file is missing; refusing to rotate silently.")
-        GameClient.objects.filter(pk="fanmade").update(web_client_id="ourtaiko-fanmade-web")
+        fanmade = Application.objects.get(client_id="ourtaiko-fanmade-web")
+        ApplicationAccess.objects.get_or_create(
+            application=fanmade,
+            defaults={
+                "allow_game": True,
+                "allow_profiles": True,
+                "allow_web": True,
+            },
+        )
+        # Existing private service configs continue through their migrated legacy aliases.
+        config.setdefault(
+            "fanmade", {"serviceId": fanmade.client_id, "serviceKey": config["fanmadeWeb"]["clientSecret"]}
+        )
+        if not Application.objects.filter(client_id="ese").exists():
+            secret = secrets.token_hex(32)
+            ese = Application.objects.create(
+                name="Every Song Ever",
+                client_id="ese",
+                client_secret=secret,
+                client_type="confidential",
+                authorization_grant_type="client-credentials",
+                algorithm="RS256",
+            )
+            ApplicationAccess.objects.create(application=ese, allow_game=True, allow_profiles=True)
+            config["ese"] = {"serviceId": "ese", "serviceKey": secret}
+        elif "ese" not in config:
+            raise CommandError(
+                "ESE already exists but its private credential file is missing; refusing to rotate."
+            )
         credentials.write_text(json.dumps(config, indent=2))
         self.stdout.write(
             "Development account and clients ready. Credentials: .data/dev-access.txt and .data/dev-clients.json"

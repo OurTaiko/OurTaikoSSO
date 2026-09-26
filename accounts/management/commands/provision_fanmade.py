@@ -8,7 +8,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from oauth2_provider.models import Application
 
-from accounts.models import GameClient
+from accounts.models import ApplicationAccess
 from accounts.security import digest
 
 
@@ -40,16 +40,6 @@ class Command(BaseCommand):
             )
         ):
             raise CommandError("Set an exact HTTPS FANMADE_REDIRECT_URI.")
-        client, created = GameClient.objects.get_or_create(
-            id="fanmade",
-            defaults={
-                "name": "OurTaiko Fanmade",
-                "secret_hash": digest(service_key),
-                "web_client_id": client_id,
-            },
-        )
-        if not created and (client.secret_hash != digest(service_key) or client.web_client_id != client_id):
-            raise CommandError("Existing service credentials differ; refusing to rotate silently.")
         app, created = Application.objects.get_or_create(
             client_id=client_id,
             defaults={
@@ -66,4 +56,17 @@ class Command(BaseCommand):
 
             if not check_password(client_secret, app.client_secret) or app.redirect_uris != redirect_uri:
                 raise CommandError("Existing OAuth client differs; refusing to overwrite silently.")
+        access, created = ApplicationAccess.objects.get_or_create(
+            application=app,
+            defaults={
+                "allow_game": True,
+                "allow_profiles": True,
+                "allow_web": True,
+                "legacy_service_id": "fanmade",
+                "legacy_secret_hash": digest(service_key),
+                "accept_legacy": True,
+            },
+        )
+        if not created and access.legacy_secret_hash != digest(service_key):
+            raise CommandError("Existing compatibility credential differs; refusing to rotate silently.")
         self.stdout.write("Fanmade service and OIDC client provisioned. No credentials printed.")

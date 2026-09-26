@@ -126,6 +126,7 @@ OAUTH2_PROVIDER = {
     "OIDC_RSA_PRIVATE_KEY": key_path.read_text() if key_path.exists() else "",
     "OIDC_ISS_ENDPOINT": SSO_BASE_URL,
     "OAUTH2_VALIDATOR_CLASS": "accounts.oidc.AccountValidator",
+    "APPLICATION_ADMIN_CLASS": "accounts.admin.UnifiedApplicationAdmin",
     "PKCE_REQUIRED": True,
     "SCOPES": {"openid": _("确认你的账号身份"), "profile": _("读取你的昵称、登录名和偏好语言")},
     "DEFAULT_SCOPES": ["openid"],
@@ -137,3 +138,6 @@ OAUTH2_PROVIDER = {
 }
 if DEBUG:
     os.environ.setdefault("OAUTHLIB_INSECURE_TRANSPORT", "1")
+
+# Explicitly identify the stock OAuth application for migration dependencies.
+OAUTH2_PROVIDER_APPLICATION_MODEL = "oauth2_provider.Application"
