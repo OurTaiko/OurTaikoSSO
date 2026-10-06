@@ -1,5 +1,23 @@
 # Production deployment
 
+## 用户头像（2026-10-06）
+
+SSO `b2860fa` 已部署，执行 `accounts.0006_user_avatar`（新增 `avatar` 列，回退旧镜像时可保留）。
+镜像 `ourtaiko-sso:avatar-b2860fa`，同时标记 `release`；回退镜像为 `ourtaiko-sso:before-avatar-b2860fa`。
+服务器无法直接拉取私有 GitHub，提交通过 Git bundle 经 SSH 快进。
+
+头像存放在 AWS S3 `ourtaiko-fanmade-tokyo`（ap-northeast-1）的 `sso/avatars/` 前缀下，与 Fanmade 共用 bucket。
+SSO 使用独立 IAM 用户 `ourtaiko-sso`：内联策略只允许对 `sso/*` 执行 Get/Put/DeleteObject，
+以及在 `sso/*` 前缀下 ListBucket；已验证访问 `fanmade/production` 返回 403。
+密钥只写在 `/etc/ourtaiko-sso/docker/sso.env`（`S3_BUCKET`、`AWS_REGION`、`S3_PREFIX=sso`、`AWS_*`），
+不与 Fanmade 的 `storage.env` 共用。OpenResty 全局 `client_max_body_size 50m` 已覆盖 5 MB 上传上限。
+
+公网验证通过：临时账号登录 → 上传 1600×1000 JPEG → S3 生成 512×512 WebP →
+匿名 `GET /avatars/...` 返回 200、`image/webp`、immutable 缓存 → 移除后对象被删除，旧 URL 返回 404。
+临时账号已删除，S3 测试前缀没有残留，SSO 用户数前后一致；Fanmade 首页正常，日志没有 SSO 错误。
+备份：`/var/backups/ourtaiko-avatar/20261006T200321Z`（迁移前 SSO dump、env、compose、修订号、SHA256SUMS；
+只验证了 `pg_restore --list` 可读，没有做恢复演练）。Fanmade 网站和游戏暂未显示头像。
+
 ## Application 统一与清理（2026-09-25）
 
 第一阶段已部署 SSO `91854aa`、Fanmade `3fcc565`，SSO 执行 accounts.0004。
