@@ -4,6 +4,7 @@ import secrets
 from datetime import timedelta
 from functools import wraps
 
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import check_password
 from django.db import transaction
@@ -72,11 +73,16 @@ def service_endpoint(view):
     return wrapped
 
 
+def avatar_url(user):
+    return settings.SSO_BASE_URL + user.avatar_url if user.avatar else ""
+
+
 def user_payload(user, client):
     return {
         "id": user.pk,
         "username": user.username,
         "nickname": user.nickname,
+        "avatarUrl": avatar_url(user),
         "preferredLanguage": user.preferred_language,
         "emailVerified": user.email_verified,
         "isAdmin": ClientRole.objects.filter(user=user, client=client, is_admin=True).exists(),
@@ -159,8 +165,10 @@ def profiles(request, client, body):
         or not all(isinstance(v, str) and re.fullmatch(r"[0-9a-f]{32}", v) for v in ids)
     ):
         return problem(400, "REQUEST_INVALID", "userIds 必须包含至多 100 个用户 ID")
-    users = User.objects.filter(pk__in=ids, is_active=True).values("id", "nickname")
-    return JsonResponse({"users": list(users)})
+    users = User.objects.filter(pk__in=ids, is_active=True).only("id", "nickname", "avatar")
+    return JsonResponse(
+        {"users": [{"id": u.pk, "nickname": u.nickname, "avatarUrl": avatar_url(u)} for u in users]}
+    )
 
 
 def web_session(client, body):

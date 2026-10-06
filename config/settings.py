@@ -28,6 +28,7 @@ INSTALLED_APPS = [
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "accounts.middleware.UploadLimitMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -87,6 +88,33 @@ STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
+# Avatars are re-encoded to WebP and stored under the "sso/" prefix of the bucket.
+# Credentials come from the AWS SDK chain (AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or a role).
+S3_BUCKET = os.getenv("S3_BUCKET", "")
+if S3_BUCKET:
+    STORAGES["avatars"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": S3_BUCKET,
+            "region_name": os.getenv("AWS_REGION") or None,
+            "endpoint_url": os.getenv("S3_ENDPOINT_URL") or None,
+            "location": os.getenv("S3_PREFIX", "sso").strip("/"),
+            "default_acl": None,
+            "file_overwrite": True,
+            "object_parameters": {
+                "ContentType": "image/webp",
+                "CacheControl": "public, max-age=31536000, immutable",
+            },
+        },
+    }
+elif DEBUG:
+    STORAGES["avatars"] = {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {"location": BASE_DIR / ".data" / "s3" / "sso"},  # Mirrors the bucket layout.
+    }
+else:
+    raise ImproperlyConfigured("S3_BUCKET is required for avatar storage outside local development.")
+AVATAR_MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 # Enable only behind a proxy that overwrites X-Forwarded-Proto. The container
 # binds to loopback, so untrusted public clients cannot supply this header directly.
 if os.getenv("TRUST_PROXY_HEADERS", "false").lower() == "true":

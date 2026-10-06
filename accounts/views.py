@@ -11,7 +11,7 @@ from django.contrib.sessions.models import Session
 from django.core import signing
 from django.core.mail import send_mail
 from django.db import IntegrityError, connection, transaction
-from django.http import Http404, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone, translation
@@ -21,7 +21,8 @@ from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_POST
 from oauth2_provider.models import AccessToken, Application, Grant, IDToken, RefreshToken
 
-from .forms import EmailForm, LoginForm, ProfileForm, RegistrationForm, VerifiedPasswordResetForm
+from . import avatars
+from .forms import AvatarForm, EmailForm, LoginForm, ProfileForm, RegistrationForm, VerifiedPasswordResetForm
 from .models import BrowserSession, GameSession, User
 from .security import allow_attempt, revoke_user_tokens
 
@@ -164,7 +165,58 @@ def profile(request):
         translation.activate(form.cleaned_data["preferred_language"])
         messages.success(request, _("个人资料已更新。"))
         return redirect("profile")
-    return render(request, "accounts/profile.html", {"form": form, "active": "profile"})
+    return render(
+        request, "accounts/profile.html", {"form": form, "avatar_form": AvatarForm(), "active": "profile"}
+    )
+
+
+@login_required
+@require_POST
+def profile_avatar(request):
+    if request.POST.get("action") == "remove":
+        avatars.clear(User, request.user.pk)
+        messages.success(request, _("头像已移除。"))
+        return redirect("profile")
+    avatar_form = AvatarForm(
+        request.POST, request.FILES, too_large=getattr(request, "upload_too_large", False)
+    )
+    if not allow_attempt("avatar:" + request.user.pk, 20, 3600):
+        avatar_form.add_error(None, _("上传次数过多，请稍后再试。"))
+    elif avatar_form.is_valid():
+        try:
+            avatars.replace(User, request.user.pk, avatar_form.cleaned_data["webp"])
+        except Exception:
+            avatars.logger.exception("Avatar upload failed")
+            avatar_form.add_error(None, _("头像暂时无法保存，请稍后再试。"))
+        else:
+            messages.success(request, _("头像已更新。"))
+            return redirect("profile")
+    form = ProfileForm(instance=request.user)
+    return render(
+        request,
+        "accounts/profile.html",
+        {"form": form, "avatar_form": avatar_form, "active": "profile"},
+        status=400,
+    )
+
+
+def avatar(request, user_id, digest):
+    name = f"avatars/{user_id}/{digest}.webp"
+    if not User.objects.filter(pk=user_id, is_active=True, avatar=name).exists():
+        raise Http404
+    try:
+        with avatars.storage().open(name) as file:
+            data = file.read()
+    except FileNotFoundError:
+        raise Http404 from None
+    except Exception:
+        avatars.logger.exception("Avatar read failed")
+        return HttpResponse(status=503)
+    response = HttpResponse(data, content_type="image/webp")
+    # The URL is content-addressed, so it can be cached forever by browsers and CDNs.
+    response["Cache-Control"] = "public, max-age=31536000, immutable"
+    response.public_cache = True
+    return response
 
 
 @login_required

@@ -36,7 +36,18 @@ DEFAULT_FROM_EMAIL=OurTaiko <no-reply@example.com>
 FANMADE_OIDC_CLIENT_ID=ourtaiko-fanmade-web
 FANMADE_OIDC_CLIENT_SECRET=<strong random secret>
 FANMADE_REDIRECT_URI=https://fanmade.ourtaiko.org/api/v1/auth/sso/callback
+S3_BUCKET=<bucket>
+AWS_REGION=<region, or "auto" for R2>
+S3_ENDPOINT_URL=<only for S3-compatible providers>
+S3_PREFIX=sso
+AWS_ACCESS_KEY_ID=<key limited to s3:GetObject/PutObject/DeleteObject on sso/*>
+AWS_SECRET_ACCESS_KEY=<secret>
 ```
+
+Avatars are stored as WebP under `S3_PREFIX` (default `sso/`) and served through
+the SSO, so the bucket does not need public read access. Production refuses to
+start without `S3_BUCKET`. Uploads may be up to 5 MB: the reverse proxy for the
+SSO site needs `client_max_body_size 6m;` (nginx/OpenResty default is 1 MB).
 
 Generate a persistent RSA 2048-bit or larger private key in the mounted data
 folder, owner 10001:10001, mode 0600. Use a separate PostgreSQL database and

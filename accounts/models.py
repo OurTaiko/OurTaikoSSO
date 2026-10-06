@@ -46,6 +46,8 @@ class User(AbstractUser):
         verbose_name=_("偏好语言"),
     )
     auth_version = models.PositiveIntegerField(default=1)
+    # Name inside the avatar storage (S3 prefix "sso/"), e.g. "avatars/<id>/<sha>.webp".
+    avatar = models.CharField(max_length=128, blank=True, editable=False)
 
     class Meta:
         constraints = [
@@ -58,6 +60,16 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.nickname or self.username
+
+    @property
+    def avatar_url(self):
+        """Site-relative URL; content-addressed, so it changes with every upload."""
+        if not self.avatar:
+            return ""
+        from django.urls import reverse
+
+        digest = self.avatar.rsplit("/", 1)[-1].removesuffix(".webp")
+        return reverse("avatar", args=[self.pk, digest])
 
 
 class ApplicationAccess(models.Model):

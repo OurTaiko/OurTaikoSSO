@@ -9,7 +9,7 @@
 | `/internal/v1/game/login` | `{username,password}` | `{user,accessToken,expiresIn}` |
 | `/internal/v1/game/introspect` | `{accessToken}` | `{user,expiresAt}` |
 | `/internal/v1/game/revoke` | `{accessToken}` | `{ok:true}`，重复撤销同样成功 |
-| `/internal/v1/users/lookup` | `{userIds:[...]}`，最多 100 个 | `{users:[{id,nickname}]}` |
+| `/internal/v1/users/lookup` | `{userIds:[...]}`，最多 100 个 | `{users:[{id,nickname,avatarUrl}]}` |
 
 ## 登录
 
@@ -39,7 +39,7 @@ token 是不可解析的随机凭证，不是 JWT，仅按哈希持久化。有�
 
 为了立即生效，本版本不缓存鉴权结果。调用方若自行缓存，必须接受相应的撤销延迟。SSO 不可达时，业务后端返回可重试的 503；不能把客户端传来的 ID 当作备用身份，也不要将上游故障伪装成密码错误。游客曲库由业务端独立提供。
 
-lookup 只返回有效用户的 ID 和昵称；不存在/停用用户省略。调用方应为缺失条目提供显示占位，不能因此删除成绩。公开昵称可短暂缓存，建议 30–60 秒；不在业务数据库建立另一份权威用户资料。
+lookup 只返回有效用户的 ID、昵称和头像地址（未设置头像时 `avatarUrl` 为空字符串）；不存在/停用用户省略。调用方应为缺失条目提供显示占位，不能因此删除成绩。公开昵称可短暂缓存，建议 30–60 秒；不在业务数据库建立另一份权威用户资料。
 
 ## 错误
 
@@ -84,3 +84,11 @@ The SSO user record stores `preferred_language`, one of `zh-hans` (default), `en
 The account profile form and the CSRF-protected `POST /language/` endpoint update the preference. The endpoint accepts form fields `language` and `next`; unsupported languages are rejected and redirects are limited to the same host. For anonymous visitors, explicit language selection is kept in the SSO session, and registration copies it into the new account. Existing account preferences take priority on login. Without a preference, the website uses Chinese; it does not infer a language from `Accept-Language`.
 
 Business services relay live identity data rather than storing a second preference. Changing language does not change passwords, IDs, roles or authentication versions and does not revoke sessions.
+
+## Avatars
+
+Users upload JPG/JPEG/PNG/WebP files (≤ 5 MB, ≤ 40 MP) on the profile page (`POST /profile/avatar/`, multipart, CSRF-protected; `action=remove` clears it). The SSO decodes only the format matching the extension, applies EXIF orientation, keeps the first frame, center-crops to a square of at most 512 px, strips metadata and re-encodes to WebP. Objects are stored in the S3 bucket at `sso/avatars/<user id>/<sha256 prefix>.webp`; the previous object is deleted after the new one is committed. `User.avatar` holds the name relative to the `sso/` prefix.
+
+Avatars are public, like nicknames. They are served by the SSO at `GET /avatars/<user id>/<hash>.webp` (the bucket can stay private); the URL is content-addressed, so responses use `Cache-Control: public, max-age=31536000, immutable`, and a new upload yields a new URL. Inactive users' avatars return 404.
+
+`avatarUrl` (absolute, empty when unset) appears in `users/lookup` and in the `user` object of `game/login`, `game/introspect` and `web/introspect`. OIDC exposes the standard `picture` claim under the `profile` scope, omitted when unset. Callers should cache by URL and fall back to an initial/placeholder when it is empty or fails to load.

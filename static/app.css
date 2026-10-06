@@ -1464,3 +1464,30 @@ input:focus-visible {
 
 .language-picker{display:flex;justify-content:flex-end;align-items:center;gap:.6rem;padding:.6rem 1rem;flex-wrap:wrap;background:var(--surface,#fff)}
 .language-picker select{font:inherit;padding:.4rem;border:1px solid #ddd;border-radius:.5rem;max-width:12rem}
+.identity-avatar,
+.mini-avatar {
+  overflow: hidden;
+}
+.identity-avatar img,
+.mini-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.avatar-form {
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.avatar-form .card-actions {
+  gap: 10px;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+.field input[type="file"] {
+  height: auto;
+  padding: 9px 11px;
+  font-size: 12px;
+}

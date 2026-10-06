@@ -3,55 +3,79 @@ msgid ""
 msgstr ""
 "Project-Id-Version: OurTaiko SSO\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-22 19:36+0000\n"
+"POT-Creation-Date: 2026-10-06 19:56+0000\n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-#: accounts/admin.py:28
+#: accounts/admin.py:168
 msgid "OurTaiko 账号管理"
 msgstr "OurTaiko アカウント管理"
 
-#: accounts/forms.py:11 accounts/forms.py:28 templates/accounts/demo.html:2
-#: templates/accounts/profile.html:4
+#: accounts/avatars.py:38
+msgid "仅支持 JPG、JPEG、PNG 或 WebP 图片。"
+msgstr "JPG、JPEG、PNG、WebP 画像のみ対応しています。"
+
+#: accounts/avatars.py:40 accounts/forms.py:76
+msgid "图片不能超过 5 MB。"
+msgstr "画像は 5 MB 以下にしてください。"
+
+#: accounts/avatars.py:46
+msgid "图片尺寸过大。"
+msgstr "画像のサイズが大きすぎます。"
+
+#: accounts/avatars.py:52
+msgid "无法读取这张图片，请确认文件格式与扩展名一致。"
+msgstr "この画像を読み込めません。ファイル形式と拡張子が一致しているか確認してください。"
+
+#: accounts/forms.py:12 accounts/forms.py:29 templates/accounts/demo.html:2
+#: templates/accounts/profile.html:5
 msgid "登录名"
 msgstr "ログイン名"
 
-#: accounts/forms.py:13
+#: accounts/forms.py:14
 msgid "密码"
 msgstr "パスワード"
 
-#: accounts/forms.py:18
+#: accounts/forms.py:19
 msgid "尝试次数过多，请 10 分钟后再试。"
 msgstr "試行回数が多すぎます。10 分後に再試行してください。"
 
-#: accounts/forms.py:23 templates/accounts/profile.html:4
+#: accounts/forms.py:24 templates/accounts/profile.html:5
 msgid "邮箱"
 msgstr "メールアドレス"
 
-#: accounts/forms.py:28 accounts/forms.py:52 templates/accounts/demo.html:2
+#: accounts/forms.py:29 accounts/forms.py:53 templates/accounts/demo.html:2
 msgid "昵称"
 msgstr "ニックネーム"
 
-#: accounts/forms.py:30
+#: accounts/forms.py:31
 msgid "3–24 位英文字母或数字，用于登录。"
 msgstr "ログインに使用する 3–24 文字の英数字。"
 
-#: accounts/forms.py:31
+#: accounts/forms.py:32
 msgid "大家在作品和排行榜上看到的名字。"
 msgstr "作品やランキングで表示される名前。"
 
-#: accounts/forms.py:37
+#: accounts/forms.py:38
 msgid "该邮箱已注册，请登录或找回密码。"
 msgstr "このメールアドレスは登録済みです。ログインするかパスワードを再設定してください。"
 
-#: accounts/forms.py:53
+#: accounts/forms.py:54
 msgid "最多 40 个字符。修改后，接入的服务会在缓存更新后显示新昵称。"
 msgstr "40 文字以内。連携サービスは情報の更新後に新しいニックネームを表示します。"
 
-#: accounts/forms.py:60
+#: accounts/forms.py:62
+msgid "上传新头像"
+msgstr "新しいアバターをアップロード"
+
+#: accounts/forms.py:63
+msgid "支持 JPG、JPEG、PNG、WebP，最大 5 MB。图片会裁成正方形并转换为 WebP。"
+msgstr "JPG、JPEG、PNG、WebP（最大 5 MB）。画像は正方形に切り抜かれ、WebP に変換されます。"
+
+#: accounts/forms.py:86
 msgid "注册邮箱"
 msgstr "登録メールアドレス"
 
@@ -71,15 +95,15 @@ msgstr "ログイン名は 3–24 文字の英数字にしてください。"
 msgid "偏好语言"
 msgstr "優先する言語"
 
-#: accounts/views.py:33
+#: accounts/views.py:34
 msgid "不支持此语言。"
 msgstr "この言語には対応していません。"
 
-#: accounts/views.py:62
+#: accounts/views.py:63
 msgid "验证你的 OurTaiko 邮箱"
 msgstr "OurTaiko のメールアドレスを確認"
 
-#: accounts/views.py:63
+#: accounts/views.py:64
 #, python-format
 msgid ""
 "请打开下方链接并确认邮箱（30 分钟内有效）：\n"
@@ -90,119 +114,135 @@ msgstr ""
 "\n"
 "%(url)s\n"
 
-#: accounts/views.py:74
+#: accounts/views.py:75
 msgid "注册次数过多，请一小时后再试。"
 msgstr "登録回数が多すぎます。1 時間後に再試行してください。"
 
-#: accounts/views.py:83
+#: accounts/views.py:84
 msgid "登录名或邮箱已被使用。"
 msgstr "ログイン名またはメールアドレスは使用済みです。"
 
-#: accounts/views.py:86
+#: accounts/views.py:87
 msgid "验证邮件暂时无法发送，请稍后再试。"
 msgstr "現在、確認メールを送信できません。しばらくしてから再試行してください。"
 
-#: accounts/views.py:90
+#: accounts/views.py:91
 msgid "去邮箱看看吧"
 msgstr "メールを確認してください"
 
-#: accounts/views.py:91
+#: accounts/views.py:92
 msgid "验证邮件已发送。完成邮箱验证后，就可以登录你的 OurTaiko 账号。"
 msgstr "確認メールを送信しました。メールアドレスを確認すると OurTaiko にログインできます。"
 
-#: accounts/views.py:106 accounts/views.py:111
+#: accounts/views.py:107 accounts/views.py:112
 msgid "链接已失效"
 msgstr "リンクが無効です"
 
-#: accounts/views.py:106
+#: accounts/views.py:107
 msgid "这封邮件的验证链接已使用或已过期。请重新获取验证邮件。"
 msgstr "確認リンクは使用済みか期限切れです。確認メールを再送してください。"
 
-#: accounts/views.py:111
+#: accounts/views.py:112
 msgid "请重新获取验证邮件。"
 msgstr "確認メールを再送してください。"
 
-#: accounts/views.py:114
+#: accounts/views.py:115
 msgid "邮箱验证完成，现在可以登录了。"
 msgstr "メールアドレスを確認しました。ログインできます。"
 
-#: accounts/views.py:123
+#: accounts/views.py:124
 msgid "发送次数过多，请稍后再试。"
 msgstr "送信回数が多すぎます。しばらくしてから再試行してください。"
 
-#: accounts/views.py:131 accounts/views.py:216
+#: accounts/views.py:132 accounts/views.py:268
 msgid "请查看你的邮箱"
 msgstr "メールを確認してください"
 
-#: accounts/views.py:131
+#: accounts/views.py:132
 msgid "如果该邮箱有待验证的账号，我们已发送新的验证邮件。"
 msgstr "未確認のアカウントがこのアドレスにある場合、新しい確認メールを送信しました。"
 
-#: accounts/views.py:136 templates/accounts/notice.html:2
+#: accounts/views.py:137 templates/accounts/notice.html:2
 msgid "重新发送验证邮件"
 msgstr "確認メールを再送"
 
-#: accounts/views.py:136
+#: accounts/views.py:137
 msgid "发送验证邮件"
 msgstr "確認メールを送信"
 
-#: accounts/views.py:165
+#: accounts/views.py:166
 msgid "个人资料已更新。"
 msgstr "プロフィールを更新しました。"
 
-#: accounts/views.py:176
+#: accounts/views.py:178
+msgid "头像已移除。"
+msgstr "アバターを削除しました。"
+
+#: accounts/views.py:184
+msgid "上传次数过多，请稍后再试。"
+msgstr "アップロード回数が多すぎます。しばらくしてから再試行してください。"
+
+#: accounts/views.py:190
+msgid "头像暂时无法保存，请稍后再试。"
+msgstr "現在アバターを保存できません。しばらくしてから再試行してください。"
+
+#: accounts/views.py:192
+msgid "头像已更新。"
+msgstr "アバターを更新しました。"
+
+#: accounts/views.py:228
 msgid "尝试次数过多，请稍后再试。"
 msgstr "試行回数が多すぎます。しばらくしてから再試行してください。"
 
-#: accounts/views.py:181
+#: accounts/views.py:233
 msgid "账号状态已改变，请刷新后重试。"
 msgstr "アカウントの状態が変更されました。再読み込みしてお試しください。"
 
-#: accounts/views.py:193
+#: accounts/views.py:245
 msgid "密码已更新，其他设备和游戏登录已失效。当前浏览器保持登录。"
 msgstr "パスワードを更新しました。他の端末とゲームはログアウトされました。このブラウザーはログインを維持します。"
 
-#: accounts/views.py:202
+#: accounts/views.py:254
 msgid "发送次数过多，请一小时后再试。"
 msgstr "送信回数が多すぎます。1 時間後に再試行してください。"
 
-#: accounts/views.py:217
+#: accounts/views.py:269
 msgid "如果该邮箱绑定了可用账号，我们已发送密码重置链接。链接 30 分钟内有效。"
 msgstr "このメールアドレスに利用可能なアカウントがある場合、再設定リンクを送信しました。30 分間有効です。"
 
-#: accounts/views.py:224
+#: accounts/views.py:276
 msgid "找回密码"
 msgstr "パスワードを再設定"
 
-#: accounts/views.py:225
+#: accounts/views.py:277
 msgid "输入注册邮箱，我们会发送重置密码的链接。"
 msgstr "登録メールアドレスを入力すると、再設定リンクを送信します。"
 
-#: accounts/views.py:226
+#: accounts/views.py:278
 msgid "发送重置链接"
 msgstr "再設定リンクを送信"
 
-#: accounts/views.py:251
+#: accounts/views.py:303
 msgid "密码已重置，请使用新密码登录。"
 msgstr "パスワードを再設定しました。新しいパスワードでログインしてください。"
 
-#: accounts/views.py:292
+#: accounts/views.py:344
 msgid "该登录已撤销。"
 msgstr "ログインを取り消しました。"
 
-#: accounts/views.py:309
+#: accounts/views.py:361
 msgid "所有登录和授权凭证已撤销，请重新登录。"
 msgstr "すべてのログインと認証情報を取り消しました。再度ログインしてください。"
 
-#: accounts/views.py:339
+#: accounts/views.py:391
 msgid "应用授权已撤销。"
 msgstr "アプリ連携を解除しました。"
 
-#: config/settings.py:130
+#: config/settings.py:159
 msgid "确认你的账号身份"
 msgstr "アカウントの本人確認"
 
-#: config/settings.py:130
+#: config/settings.py:159
 msgid "读取你的昵称、登录名和偏好语言"
 msgstr "ニックネーム、ログイン名、優先言語の読み取り"
 
@@ -314,7 +354,7 @@ msgstr "こんにちは、%(nickname)s さん。"
 msgid "这是应用通过账号中心取得的资料。"
 msgstr "アカウントセンターからアプリに提供された情報です。"
 
-#: templates/accounts/demo.html:2 templates/accounts/profile.html:4
+#: templates/accounts/demo.html:2 templates/accounts/profile.html:5
 msgid "用户 ID"
 msgstr "ユーザー ID"
 
@@ -487,23 +527,31 @@ msgstr "公開プロフィール"
 msgid "所有接入的应用使用同一个昵称和偏好语言。"
 msgstr "連携するアプリで同じニックネームと優先言語を使用します。"
 
-#: templates/accounts/profile.html:3
+#: templates/accounts/profile.html:4
+msgid "移除头像"
+msgstr "アバターを削除"
+
+#: templates/accounts/profile.html:4
+msgid "上传头像"
+msgstr "アバターをアップロード"
+
+#: templates/accounts/profile.html:4
 msgid "保存修改"
 msgstr "変更を保存"
 
-#: templates/accounts/profile.html:4
+#: templates/accounts/profile.html:5
 msgid "账号信息"
 msgstr "アカウント情報"
 
-#: templates/accounts/profile.html:4
+#: templates/accounts/profile.html:5
 msgid "唯一标识符用于关联作品与成绩，不会随昵称变化。"
 msgstr "固有の ID で作品とスコアを関連付けます。ニックネームを変更しても ID は変わりません。"
 
-#: templates/accounts/profile.html:4
+#: templates/accounts/profile.html:5
 msgid "尚未绑定"
 msgstr "未設定"
 
-#: templates/accounts/profile.html:4
+#: templates/accounts/profile.html:5
 msgid "已验证"
 msgstr "確認済み"
 

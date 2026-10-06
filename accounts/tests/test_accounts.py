@@ -107,7 +107,7 @@ class AccountTests(TestCase):
         self.user.nickname = "新名字"
         self.user.save()
         response = self.api("users/lookup", {"userIds": [self.user.pk]})
-        self.assertEqual(response.json(), {"users": [{"id": self.user.pk, "nickname": "新名字"}]})
+        self.assertEqual(response.json(), {"users": [{"id": self.user.pk, "nickname": "新名字", "avatarUrl": ""}]})
         self.assertEqual(self.api("users/lookup", {"userIds": [self.user.pk] * 101}).status_code, 400)
         self.assertEqual(self.api("users/lookup", {"userIds": [17]}).status_code, 400)
 

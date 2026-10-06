@@ -3,6 +3,7 @@ from django.contrib.auth.forms import AuthenticationForm, PasswordResetForm, Use
 from django.utils import translation
 from django.utils.translation import gettext_lazy as _
 
+from . import avatars
 from .models import User
 from .security import login_allowed
 
@@ -54,6 +55,31 @@ class ProfileForm(forms.ModelForm):
 
     def clean_nickname(self):
         return self.cleaned_data["nickname"].strip()
+
+
+class AvatarForm(forms.Form):
+    avatar = forms.FileField(
+        label=_("上传新头像"),
+        help_text=_("支持 JPG、JPEG、PNG、WebP，最大 5 MB。图片会裁成正方形并转换为 WebP。"),
+        widget=forms.FileInput(attrs={"accept": ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"}),
+    )
+
+    def __init__(self, *args, too_large=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        # UploadLimitMiddleware already discarded the file; report the limit, not "required".
+        self.too_large = too_large
+        if too_large:
+            self.fields["avatar"].required = False
+
+    def clean_avatar(self):
+        if self.too_large:
+            raise forms.ValidationError(_("图片不能超过 5 MB。"))
+        upload = self.cleaned_data["avatar"]
+        try:
+            self.cleaned_data["webp"] = avatars.to_webp(upload)
+        except avatars.AvatarError as error:
+            raise forms.ValidationError(str(error)) from None
+        return upload
 
 
 class EmailForm(forms.Form):

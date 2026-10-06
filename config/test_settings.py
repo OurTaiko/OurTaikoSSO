@@ -9,4 +9,5 @@ ALLOWED_HOSTS = ["testserver", "127.0.0.1", "localhost"]
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    "avatars": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
 }
