@@ -1,5 +1,6 @@
 import io
 
+from django.conf import settings
 from django.core.files.storage import storages
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
@@ -133,3 +134,36 @@ class AvatarTests(TestCase):
         response = self.upload("a.png", image_bytes("PNG"))
         self.assertEqual(response.status_code, 302)
         self.assertEqual(User.objects.get(pk=self.user.pk).avatar, "")
+
+    def test_oidc_userinfo_returns_picture_only_when_set(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+        from oauth2_provider.models import AccessToken
+
+        app = Application.objects.create(
+            name="Fanmade",
+            client_id="fanmade-web",
+            client_type="confidential",
+            authorization_grant_type="authorization-code",
+            redirect_uris="http://localhost:9001/callback",
+            algorithm="RS256",
+        )
+        AccessToken.objects.create(
+            application=app,
+            user=self.user,
+            token="userinfo-token",
+            scope="openid profile",
+            expires=timezone.now() + timedelta(hours=1),
+        )
+        self.client.logout()
+
+        def userinfo():
+            return self.client.get("/o/userinfo/", HTTP_AUTHORIZATION="Bearer userinfo-token").json()
+
+        self.assertNotIn("picture", userinfo())
+        self.client.force_login(self.user)
+        self.upload("a.png", image_bytes("PNG"))
+        self.client.logout()
+        self.user.refresh_from_db()
+        self.assertEqual(userinfo()["picture"], settings.SSO_BASE_URL + self.user.avatar_url)
