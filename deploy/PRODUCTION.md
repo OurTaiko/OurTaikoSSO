@@ -4,7 +4,9 @@
 
 SSO `b2860fa` 已部署，执行 `accounts.0006_user_avatar`（新增 `avatar` 列，回退旧镜像时可保留）。
 镜像 `ourtaiko-sso:avatar-b2860fa`，同时标记 `release`；回退镜像为 `ourtaiko-sso:before-avatar-b2860fa`。
-服务器无法直接拉取私有 GitHub，提交通过 Git bundle 经 SSH 快进。
+本次曾用 Git bundle 同步，不符合要求。**SSO 与 Fanmade 一样必须先推 GitHub，再在服务器上以 `kv` 用户执行
+`git -C /opt/ourtaiko-sso/src pull --ff-only origin main` 拉取**：`kv` 已通过 `gh` 认证，可以访问私有仓库；
+不要用 `sudo git`，root 没有这份凭据。checkout 属主已统一为 `kv`。不得使用 bundle 或直接复制源码。
 
 头像存放在 AWS S3 `ourtaiko-fanmade-tokyo`（ap-northeast-1）的 `sso/avatars/` 前缀下，与 Fanmade 共用 bucket。
 SSO 使用独立 IAM 用户 `ourtaiko-sso`：内联策略只允许对 `sso/*` 执行 Get/Put/DeleteObject，
