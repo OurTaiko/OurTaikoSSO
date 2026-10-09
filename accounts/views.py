@@ -204,6 +204,10 @@ def avatar(request, user_id, digest):
     name = f"avatars/{user_id}/{digest}.webp"
     if not User.objects.filter(pk=user_id, is_active=True, avatar=name).exists():
         raise Http404
+    if settings.AVATAR_CDN_BASE_URL:
+        response = redirect(f"{settings.AVATAR_CDN_BASE_URL}/{user_id}/{digest}.webp")
+        response["Cache-Control"] = "no-store"
+        return response
     try:
         with avatars.storage().open(name) as file:
             data = file.read()

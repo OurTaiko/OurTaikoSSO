@@ -1,4 +1,3 @@
-from django.conf import settings
 from oauth2_provider.oauth2_validators import OAuth2Validator
 
 
@@ -33,9 +32,7 @@ class AccountValidator(OAuth2Validator):
             "nickname": lambda request: request.user.nickname,
             "locale": lambda request: request.user.preferred_language,
             "preferred_username": lambda request: request.user.username,
-            "picture": lambda request: (
-                settings.SSO_BASE_URL + request.user.avatar_url if request.user.avatar else None
-            ),
+            "picture": lambda request: request.user.absolute_avatar_url or None,
         }
 
     def get_oidc_claims(self, token, token_handler, request):

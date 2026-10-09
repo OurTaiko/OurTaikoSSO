@@ -1,6 +1,7 @@
 import secrets
 import unicodedata
 
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
@@ -63,13 +64,22 @@ class User(AbstractUser):
 
     @property
     def avatar_url(self):
-        """Site-relative URL; content-addressed, so it changes with every upload."""
+        """Content-addressed CDN URL, or the local avatar route when CDN is disabled."""
         if not self.avatar:
             return ""
         from django.urls import reverse
 
         digest = self.avatar.rsplit("/", 1)[-1].removesuffix(".webp")
+        if settings.AVATAR_CDN_BASE_URL:
+            return f"{settings.AVATAR_CDN_BASE_URL}/{self.pk}/{digest}.webp"
         return reverse("avatar", args=[self.pk, digest])
+
+    @property
+    def absolute_avatar_url(self):
+        url = self.avatar_url
+        if not url or settings.AVATAR_CDN_BASE_URL:
+            return url
+        return settings.SSO_BASE_URL + url
 
 
 class ApplicationAccess(models.Model):

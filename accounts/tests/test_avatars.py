@@ -167,3 +167,38 @@ class AvatarTests(TestCase):
         self.client.logout()
         self.user.refresh_from_db()
         self.assertEqual(userinfo()["picture"], settings.SSO_BASE_URL + self.user.avatar_url)
+
+    @override_settings(AVATAR_CDN_BASE_URL="https://cdn.example/sso/avatars")
+    def test_cdn_url_claim_csp_and_legacy_route(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from django.urls import reverse
+
+        from accounts.api import avatar_url
+        from accounts.oidc import AccountValidator
+
+        self.upload("cdn.png", image_bytes("PNG"))
+        self.user.refresh_from_db()
+        digest = self.user.avatar.rsplit("/", 1)[-1].removesuffix(".webp")
+        expected = f"https://cdn.example/sso/avatars/{self.user.pk}/{digest}.webp"
+        self.assertEqual(self.user.avatar_url, expected)
+        self.assertEqual(avatar_url(self.user), expected)
+        self.assertEqual(
+            AccountValidator().get_additional_claims()["picture"](SimpleNamespace(user=self.user)), expected
+        )
+        response = self.client.get("/profile/")
+        self.assertContains(response, expected)
+        self.assertIn("img-src 'self' data: https://cdn.example;", response["Content-Security-Policy"])
+        legacy = reverse("avatar", args=[self.user.pk, digest])
+        self.client.logout()
+        with patch("accounts.avatars.storage", side_effect=AssertionError("CDN must serve bytes")):
+            response = self.client.get(legacy)
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(response["Location"], expected)
+            self.assertEqual(response["Cache-Control"], "no-store")
+        self.user.is_active = False
+        self.user.save()
+        self.assertEqual(self.client.get(legacy).status_code, 404)
+        self.user.avatar = ""
+        self.assertEqual(self.user.absolute_avatar_url, "")

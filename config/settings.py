@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
@@ -91,6 +92,22 @@ STORAGES = {
 # Avatars are re-encoded to WebP and stored under the "sso/" prefix of the bucket.
 # Credentials come from the AWS SDK chain (AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or a role).
 S3_BUCKET = os.getenv("S3_BUCKET", "")
+# Complete CDN prefix for avatars (including /sso/avatars).
+AVATAR_CDN_BASE_URL = os.getenv("AVATAR_CDN_BASE_URL", "").rstrip("/")
+if AVATAR_CDN_BASE_URL:
+    parsed = urlsplit(AVATAR_CDN_BASE_URL)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+        or "?" in AVATAR_CDN_BASE_URL
+        or "#" in AVATAR_CDN_BASE_URL
+        or any(c.isspace() or c in "\\;\"'" for c in AVATAR_CDN_BASE_URL)
+    ):
+        raise ImproperlyConfigured(
+            "AVATAR_CDN_BASE_URL must be an HTTPS URL without credentials, query or fragment."
+        )
 if S3_BUCKET:
     STORAGES["avatars"] = {
         "BACKEND": "storages.backends.s3.S3Storage",
@@ -103,7 +120,7 @@ if S3_BUCKET:
             "file_overwrite": True,
             "object_parameters": {
                 "ContentType": "image/webp",
-                "CacheControl": "public, max-age=31536000, immutable",
+                "CacheControl": "public, max-age=60",
             },
         },
     }

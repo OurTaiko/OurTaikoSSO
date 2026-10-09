@@ -4,7 +4,6 @@ import secrets
 from datetime import timedelta
 from functools import wraps
 
-from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import check_password
 from django.db import transaction
@@ -74,7 +73,7 @@ def service_endpoint(view):
 
 
 def avatar_url(user):
-    return settings.SSO_BASE_URL + user.avatar_url if user.avatar else ""
+    return user.absolute_avatar_url
 
 
 def user_payload(user, client):

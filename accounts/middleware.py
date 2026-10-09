@@ -1,5 +1,6 @@
 from urllib.parse import urlsplit
 
+from django.conf import settings
 from oauth2_provider.models import Application
 
 
@@ -51,8 +52,12 @@ class ResponsePolicyMiddleware:
                     form_action += " " + parsed.scheme + "://" + parsed.netloc
         if not getattr(response, "public_cache", False):
             response["Cache-Control"] = "no-store"
+        image_sources = "'self' data:"
+        if settings.AVATAR_CDN_BASE_URL:
+            cdn = urlsplit(settings.AVATAR_CDN_BASE_URL)
+            image_sources += " " + cdn.scheme + "://" + cdn.netloc
         response["Content-Security-Policy"] = (
-            "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; "
+            f"default-src 'self'; style-src 'self'; script-src 'self'; img-src {image_sources}; "
             "font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; "
             "form-action " + form_action
         )
