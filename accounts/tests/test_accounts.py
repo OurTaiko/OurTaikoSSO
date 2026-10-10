@@ -111,8 +111,12 @@ class AccountTests(TestCase):
         self.assertEqual(self.api("users/lookup", {"userIds": [self.user.pk] * 101}).status_code, 400)
         self.assertEqual(self.api("users/lookup", {"userIds": [17]}).status_code, 400)
 
+    def test_id_lookup_rejects_username_requests(self):
+        for body in [{"usernames": ["player1"]}, {"userIds": [self.user.pk], "usernames": ["player1"]}]:
+            self.assertEqual(self.api("users/lookup", body).status_code, 400)
+
     def test_profiles_by_username_are_exact_minimal_and_current(self):
-        path = "users/lookup"
+        path = "users/lookup-by-username"
         self.user.nickname = "新的昵称"
         self.user.save()
         result = self.api(path, {"usernames": ["missing", "player1", "player1", "Player1"]})
@@ -124,6 +128,7 @@ class AccountTests(TestCase):
             {"usernames": ["player1"] * 101}, {"usernames": [17]}, {"usernames": [""]},
             {"usernames": [" player1"]}, {"usernames": ["a" * 25]},
             {"usernames": [], "userIds": []}, {"usernames": "player1"},
+            {"userIds": [self.user.pk]},
         ]:
             self.assertEqual(self.api(path, body).status_code, 400)
         self.assertEqual(self.api(path, {"usernames": []}).json(), {"users": []})

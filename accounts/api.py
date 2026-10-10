@@ -156,27 +156,34 @@ def revoke(request, client, body):
 
 @service_endpoint
 def profiles(request, client, body):
-    by_username = set(body) == {"usernames"}
-    key = "usernames" if by_username else "userIds"
-    values = body.get(key)
+    ids = body.get("userIds")
     if (
-        set(body) != {key}
-        or not isinstance(values, list)
-        or len(values) > 100
-        or not all(
-            isinstance(v, str)
-            and (bool(re.fullmatch(r"\S{1,24}", v)) if by_username else bool(re.fullmatch(r"[0-9a-f]{32}", v)))
-            for v in values
-        )
+        set(body) != {"userIds"}
+        or not isinstance(ids, list)
+        or len(ids) > 100
+        or not all(isinstance(v, str) and re.fullmatch(r"[0-9a-f]{32}", v) for v in ids)
     ):
-        return problem(400, "REQUEST_INVALID", "需要至多 100 个 userIds 或 usernames，不能混用")
+        return problem(400, "REQUEST_INVALID", "userIds 必须包含至多 100 个用户 ID")
+    users = User.objects.filter(pk__in=ids, is_active=True).only("id", "nickname", "avatar")
+    return JsonResponse(
+        {"users": [{"id": u.pk, "nickname": u.nickname, "avatarUrl": avatar_url(u)} for u in users]}
+    )
+
+
+@service_endpoint
+def profiles_by_username(request, client, body):
+    usernames = body.get("usernames")
+    if (
+        set(body) != {"usernames"}
+        or not isinstance(usernames, list)
+        or len(usernames) > 100
+        or not all(isinstance(v, str) and re.fullmatch(r"\S{1,24}", v) for v in usernames)
+    ):
+        return problem(400, "REQUEST_INVALID", "usernames 必须包含至多 100 个用户名，每个 1–24 字符且无空白")
     # Exact, case-sensitive matching agrees with login and username uniqueness.
-    users = User.objects.filter(
-        **{"username__in" if by_username else "pk__in": values}, is_active=True
-    ).only("id", "username", "nickname", "avatar")
+    users = User.objects.filter(username__in=usernames, is_active=True).only("id", "username", "nickname", "avatar")
     return JsonResponse({"users": [
-        {"id": u.pk, "nickname": u.nickname, "avatarUrl": avatar_url(u),
-         **({"username": u.username} if by_username else {})}
+        {"id": u.pk, "username": u.username, "nickname": u.nickname, "avatarUrl": avatar_url(u)}
         for u in users
     ]})
 

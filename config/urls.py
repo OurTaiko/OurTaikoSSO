@@ -43,6 +43,7 @@ urlpatterns = [
     path("internal/v1/game/introspect", api.introspect),
     path("internal/v1/game/revoke", api.revoke),
     path("internal/v1/users/lookup", api.profiles),
+    path("internal/v1/users/lookup-by-username", api.profiles_by_username),
     path("internal/v1/users/search", api.search_profiles),
     path("internal/v1/web/introspect", api.web_introspect),
     path("internal/v1/web/revoke", api.web_revoke),
