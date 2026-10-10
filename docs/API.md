@@ -9,7 +9,9 @@
 | `/internal/v1/game/login` | `{username,password}` | `{user,accessToken,expiresIn}` |
 | `/internal/v1/game/introspect` | `{accessToken}` | `{user,expiresAt}` |
 | `/internal/v1/game/revoke` | `{accessToken}` | `{ok:true}`，重复撤销同样成功 |
-| `/internal/v1/users/lookup` | `{userIds:[...]}`，最多 100 个 | `{users:[{id,nickname,avatarUrl}]}` |
+| `/internal/v1/users/lookup-by-id` | `{userIds:[...]}`，最多 100 个 | `{users:[{id,nickname,avatarUrl}]}` |
+| `/internal/v1/users/lookup` **Deprecated** | 同 lookup-by-id，仅兼容旧调用；新代码请使用 lookup-by-id | 同 lookup-by-id |
+| `/internal/v1/users/lookup-by-username` | `{usernames:[...]}`，最多 100 个 | `{users:[{id,username,nickname,avatarUrl}]}` |
 
 ## 登录
 
@@ -38,6 +40,8 @@ token 是不可解析的随机凭证，不是 JWT，仅按哈希持久化。有�
 业务后端将玩家传入的 Bearer token 作为 `accessToken` 发给 introspect。仅在成功后使用返回的 ID。昵称及角色每次由 SSO 当前数据库读取；密码修改、重置、用户停用、会话撤销会使旧游戏 token 失效。
 
 为了立即生效，本版本不缓存鉴权结果。调用方若自行缓存，必须接受相应的撤销延迟。SSO 不可达时，业务后端返回可重试的 503；不能把客户端传来的 ID 当作备用身份，也不要将上游故障伪装成密码错误。游客曲库由业务端独立提供。
+
+`users/lookup-by-id` 仅按 ID 查询。旧路径 `users/lookup` 已标记 **Deprecated**，作为兼容别名与新路径指向同一处理方法，保持原输入、响应和权限检查；暂无下线日期，新代码必须使用 `users/lookup-by-id`。独立的 `users/lookup-by-username` 按精确区分大小写的 username 查询，并返回 username 以供关联。两个接口均拒绝另一种查询字段及混合输入，用户名需 1–24 字符且无空白。两者都要求 Application 的资料查询权限，不返回角色、邮箱或其他身份信息，也不能用来授权。新增用户名接口需部署后才会生效。
 
 lookup 只返回有效用户的 ID、昵称和头像地址（未设置头像时 `avatarUrl` 为空字符串）；不存在/停用用户省略。调用方应为缺失条目提供显示占位，不能因此删除成绩。公开昵称可短暂缓存，建议 30–60 秒；不在业务数据库建立另一份权威用户资料。
 
@@ -91,4 +95,4 @@ Users upload JPG/JPEG/PNG/WebP files (≤ 5 MB, ≤ 40 MP) on the profile page (
 
 Avatars are public, like nicknames. They are served by the SSO at `GET /avatars/<user id>/<hash>.webp` (the bucket can stay private); the URL is content-addressed, so responses use `Cache-Control: public, max-age=31536000, immutable`, and a new upload yields a new URL. Inactive users' avatars return 404.
 
-`avatarUrl` (absolute, empty when unset) appears in `users/lookup` and in the `user` object of `game/login`, `game/introspect` and `web/introspect`. OIDC exposes the standard `picture` claim under the `profile` scope, omitted when unset. Callers should cache by URL and fall back to an initial/placeholder when it is empty or fails to load.
+`avatarUrl` (absolute, empty when unset) appears in `users/lookup-by-id`, `users/lookup-by-username` (and the deprecated `users/lookup` alias), and in the `user` object of `game/login`, `game/introspect` and `web/introspect`. OIDC exposes the standard `picture` claim under the `profile` scope, omitted when unset. Callers should cache by URL and fall back to an initial/placeholder when it is empty or fails to load.

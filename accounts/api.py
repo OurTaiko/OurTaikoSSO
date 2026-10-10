@@ -170,6 +170,24 @@ def profiles(request, client, body):
     )
 
 
+@service_endpoint
+def profiles_by_username(request, client, body):
+    usernames = body.get("usernames")
+    if (
+        set(body) != {"usernames"}
+        or not isinstance(usernames, list)
+        or len(usernames) > 100
+        or not all(isinstance(v, str) and re.fullmatch(r"\S{1,24}", v) for v in usernames)
+    ):
+        return problem(400, "REQUEST_INVALID", "usernames 必须包含至多 100 个用户名，每个 1–24 字符且无空白")
+    # Exact, case-sensitive matching agrees with login and username uniqueness.
+    users = User.objects.filter(username__in=usernames, is_active=True).only("id", "username", "nickname", "avatar")
+    return JsonResponse({"users": [
+        {"id": u.pk, "username": u.username, "nickname": u.nickname, "avatarUrl": avatar_url(u)}
+        for u in users
+    ]})
+
+
 def web_session(client, body, *, include_expired=False):
     token = body.get("accessToken")
     if set(body) != {"accessToken"} or not isinstance(token, str) or not 1 <= len(token) <= 4096:

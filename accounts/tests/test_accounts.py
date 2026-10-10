@@ -106,10 +106,45 @@ class AccountTests(TestCase):
     def test_public_profiles_are_minimal_and_current(self):
         self.user.nickname = "新名字"
         self.user.save()
-        response = self.api("users/lookup", {"userIds": [self.user.pk]})
-        self.assertEqual(response.json(), {"users": [{"id": self.user.pk, "nickname": "新名字", "avatarUrl": ""}]})
-        self.assertEqual(self.api("users/lookup", {"userIds": [self.user.pk] * 101}).status_code, 400)
-        self.assertEqual(self.api("users/lookup", {"userIds": [17]}).status_code, 400)
+        for path in ["users/lookup-by-id", "users/lookup"]:
+            with self.subTest(path=path):
+                response = self.api(path, {"userIds": [self.user.pk]})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json(), {"users": [{"id": self.user.pk, "nickname": "新名字", "avatarUrl": ""}]})
+                self.assertEqual(self.api(path, {"userIds": [self.user.pk] * 101}).status_code, 400)
+                self.assertEqual(self.api(path, {"userIds": [17]}).status_code, 400)
+                self.assertEqual(self.api(path, {"userIds": [self.user.pk]}, key="bad").status_code, 401)
+                self.assertEqual(self.api(path, {"userIds": [self.user.pk]}, HTTP_ORIGIN="https://evil.example").status_code, 403)
+
+    def test_id_lookup_rejects_username_requests(self):
+        for path in ["users/lookup-by-id", "users/lookup"]:
+            for body in [{"usernames": ["player1"]}, {"userIds": [self.user.pk], "usernames": ["player1"]}]:
+                self.assertEqual(self.api(path, body).status_code, 400)
+
+    def test_profiles_by_username_are_exact_minimal_and_current(self):
+        path = "users/lookup-by-username"
+        self.user.nickname = "新的昵称"
+        self.user.save()
+        result = self.api(path, {"usernames": ["missing", "player1", "player1", "Player1"]})
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json(), {"users": [{
+            "id": self.user.pk, "username": "player1", "nickname": "新的昵称", "avatarUrl": "",
+        }]})
+        for body in [
+            {"usernames": ["player1"] * 101}, {"usernames": [17]}, {"usernames": [""]},
+            {"usernames": [" player1"]}, {"usernames": ["a" * 25]},
+            {"usernames": [], "userIds": []}, {"usernames": "player1"},
+            {"userIds": [self.user.pk]},
+        ]:
+            self.assertEqual(self.api(path, body).status_code, 400)
+        self.assertEqual(self.api(path, {"usernames": []}).json(), {"users": []})
+        self.assertEqual(self.api(path, {"usernames": ["player1"]}, key="bad").status_code, 401)
+        self.assertEqual(self.api(path, {"usernames": ["player1"]}, HTTP_ORIGIN="https://evil.example").status_code, 403)
+        self.user.is_active = False
+        self.user.save()
+        self.assertEqual(self.api(path, {"usernames": ["player1"]}).json(), {"users": []})
+        ApplicationAccess.objects.filter(application=self.fanmade).update(allow_profiles=False)
+        self.assertEqual(self.api(path, {"usernames": ["player1"]}).status_code, 403)
 
     def test_login_rate_limit_shared_with_browser(self):
         for _ in range(15):
