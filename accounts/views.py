@@ -11,6 +11,7 @@ from django.contrib.sessions.models import Session
 from django.core import signing
 from django.core.mail import send_mail
 from django.db import IntegrityError, connection, transaction
+from django.db.models import Q
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
@@ -369,7 +370,12 @@ def revoke_all(request):
 @login_required
 def connections(request):
     apps = Application.objects.filter(
-        accesstoken__user=request.user, accesstoken__expires__gt=timezone.now()
+        Q(accesstoken__user=request.user, accesstoken__expires__gt=timezone.now())
+        | Q(
+            refreshtoken__user=request.user,
+            refreshtoken__revoked__isnull=True,
+            refreshtoken__access_token__expires__gt=timezone.now() - timezone.timedelta(days=7),
+        )
     ).distinct()
     games = (
         GameSession.objects.filter(user=request.user, expires_at__gt=timezone.now())
@@ -388,8 +394,10 @@ def revoke_connection(request):
     if request.POST.get("kind") == "game" and str(key).isdigit():
         GameSession.objects.filter(user=request.user, client_id=key).delete()
     elif request.POST.get("kind") == "web" and str(key).isdigit():
-        for model in [RefreshToken, AccessToken, IDToken, Grant]:
-            model.objects.filter(user=request.user, application_id=key).delete()
+        with transaction.atomic():
+            User.objects.select_for_update().get(pk=request.user.pk)
+            for model in [RefreshToken, AccessToken, IDToken, Grant]:
+                model.objects.filter(user=request.user, application_id=key).delete()
     else:
         raise Http404
     messages.success(request, _("应用授权已撤销。"))

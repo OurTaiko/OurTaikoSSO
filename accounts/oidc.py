@@ -1,4 +1,8 @@
+from django.db import transaction
 from oauth2_provider.oauth2_validators import OAuth2Validator
+from oauthlib.oauth2 import InvalidGrantError
+
+from .models import User
 
 
 class AccountValidator(OAuth2Validator):
@@ -60,3 +64,17 @@ class AccountValidator(OAuth2Validator):
             and request.user.is_active
             and self.application_enabled(client)
         )
+
+    @transaction.atomic
+    def save_bearer_token(self, token, request, *args, **kwargs):
+        if request.user is not None:
+            # Serialize token issuance with password changes and authorization revocation.
+            user = User.objects.select_for_update().get(pk=request.user.pk)
+            if not user.is_active or user.auth_version != request.user.auth_version:
+                raise InvalidGrantError(request=request)
+            request.user = user
+            if request.grant_type == "refresh_token" and not self.validate_refresh_token(
+                request.refresh_token, request.client, request
+            ):
+                raise InvalidGrantError(request=request)
+        return super().save_bearer_token(token, request, *args, **kwargs)

@@ -11,7 +11,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.debug import sensitive_post_parameters
-from oauth2_provider.models import AccessToken, Application
+from oauth2_provider.models import AccessToken, Application, RefreshToken, revoke_access_token
 
 from .models import ApplicationAccess, ClientRole, GameSession, User
 from .security import digest, login_allowed
@@ -170,7 +170,7 @@ def profiles(request, client, body):
     )
 
 
-def web_session(client, body):
+def web_session(client, body, *, include_expired=False):
     token = body.get("accessToken")
     if set(body) != {"accessToken"} or not isinstance(token, str) or not 1 <= len(token) <= 4096:
         return None
@@ -181,8 +181,8 @@ def web_session(client, body):
         .filter(
             token_checksum=sha256(token.encode()).hexdigest(),
             application=client,
-            expires__gt=timezone.now(),
             user__is_active=True,
+            **({} if include_expired else {"expires__gt": timezone.now()}),
         )
         .first()
     )
@@ -198,9 +198,29 @@ def web_introspect(request, client, body):
 
 @service_endpoint
 def web_revoke(request, client, body):
-    token = web_session(client, body)
-    if token:
-        token.revoke()
+    if set(body) - {"accessToken", "refreshToken"}:
+        return problem(400, "REQUEST_INVALID", "凭证格式不正确")
+    refresh = body.get("refreshToken", "")
+    if not isinstance(refresh, str) or len(refresh) > 4096:
+        return problem(400, "REQUEST_INVALID", "凭证格式不正确")
+    # A website may log out after its short-lived access token expired.
+    token = web_session(client, {"accessToken": body.get("accessToken")}, include_expired=True)
+    with transaction.atomic():
+        renewal = (
+            RefreshToken.objects.filter(application=client, token_checksum=digest(refresh)).first()
+            if refresh
+            else None
+        )
+        user_id = renewal.user_id if renewal else token.user_id if token else None
+        if user_id:
+            User.objects.select_for_update().get(pk=user_id)
+        if renewal:
+            if renewal.token_family:
+                RefreshToken.revoke_family(renewal.token_family)
+            else:
+                renewal.revoke()
+        if token and AccessToken.objects.filter(pk=token.pk).exists():
+            revoke_access_token(token)
     return JsonResponse({"ok": True})
 
 
