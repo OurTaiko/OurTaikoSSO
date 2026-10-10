@@ -9,7 +9,7 @@
 | `/internal/v1/game/login` | `{username,password}` | `{user,accessToken,expiresIn}` |
 | `/internal/v1/game/introspect` | `{accessToken}` | `{user,expiresAt}` |
 | `/internal/v1/game/revoke` | `{accessToken}` | `{ok:true}`，重复撤销同样成功 |
-| `/internal/v1/users/lookup` | `{userIds:[...]}`，最多 100 个 | `{users:[{id,nickname,avatarUrl}]}` |
+| `/internal/v1/users/lookup` | `{userIds:[...]}` 或 `{usernames:[...]}`，最多 100 个，不可混用 | `{users:[{id,nickname,avatarUrl}]}`；按用户名查询时额外返回 `username` |
 
 ## 登录
 
@@ -38,6 +38,8 @@ token 是不可解析的随机凭证，不是 JWT，仅按哈希持久化。有�
 业务后端将玩家传入的 Bearer token 作为 `accessToken` 发给 introspect。仅在成功后使用返回的 ID。昵称及角色每次由 SSO 当前数据库读取；密码修改、重置、用户停用、会话撤销会使旧游戏 token 失效。
 
 为了立即生效，本版本不缓存鉴权结果。调用方若自行缓存，必须接受相应的撤销延迟。SSO 不可达时，业务后端返回可重试的 503；不能把客户端传来的 ID 当作备用身份，也不要将上游故障伪装成密码错误。游客曲库由业务端独立提供。
+
+lookup 支持按 ID 或精确区分大小写的 username 查询；用户名查询额外返回 username 以供关联，原 ID 查询响应不变。两个输入字段不能混用，用户名需 1–24 字符且无空白。接口仍要求 Application 的资料查询权限，不返回角色、邮箱或其他身份信息，也不能用来授权。该扩展需部署后才会生效。
 
 lookup 只返回有效用户的 ID、昵称和头像地址（未设置头像时 `avatarUrl` 为空字符串）；不存在/停用用户省略。调用方应为缺失条目提供显示占位，不能因此删除成绩。公开昵称可短暂缓存，建议 30–60 秒；不在业务数据库建立另一份权威用户资料。
 

@@ -156,18 +156,29 @@ def revoke(request, client, body):
 
 @service_endpoint
 def profiles(request, client, body):
-    ids = body.get("userIds")
+    by_username = set(body) == {"usernames"}
+    key = "usernames" if by_username else "userIds"
+    values = body.get(key)
     if (
-        set(body) != {"userIds"}
-        or not isinstance(ids, list)
-        or len(ids) > 100
-        or not all(isinstance(v, str) and re.fullmatch(r"[0-9a-f]{32}", v) for v in ids)
+        set(body) != {key}
+        or not isinstance(values, list)
+        or len(values) > 100
+        or not all(
+            isinstance(v, str)
+            and (bool(re.fullmatch(r"\S{1,24}", v)) if by_username else bool(re.fullmatch(r"[0-9a-f]{32}", v)))
+            for v in values
+        )
     ):
-        return problem(400, "REQUEST_INVALID", "userIds 必须包含至多 100 个用户 ID")
-    users = User.objects.filter(pk__in=ids, is_active=True).only("id", "nickname", "avatar")
-    return JsonResponse(
-        {"users": [{"id": u.pk, "nickname": u.nickname, "avatarUrl": avatar_url(u)} for u in users]}
-    )
+        return problem(400, "REQUEST_INVALID", "需要至多 100 个 userIds 或 usernames，不能混用")
+    # Exact, case-sensitive matching agrees with login and username uniqueness.
+    users = User.objects.filter(
+        **{"username__in" if by_username else "pk__in": values}, is_active=True
+    ).only("id", "username", "nickname", "avatar")
+    return JsonResponse({"users": [
+        {"id": u.pk, "nickname": u.nickname, "avatarUrl": avatar_url(u),
+         **({"username": u.username} if by_username else {})}
+        for u in users
+    ]})
 
 
 def web_session(client, body, *, include_expired=False):
