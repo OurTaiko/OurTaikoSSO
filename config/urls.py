@@ -4,7 +4,7 @@ from django.contrib.auth.views import LogoutView
 from django.urls import include, path
 from oauth2_provider import views as oauth_views
 
-from accounts import api, views
+from accounts import api, game_accounts, views
 
 oauth_patterns = [
     path("authorize/", oauth_views.AuthorizationView.as_view(), name="authorize"),
@@ -39,6 +39,10 @@ urlpatterns = [
     path("connections/revoke/", views.revoke_connection, name="revoke-connection"),
     path("healthz", views.health),
     path("readyz", views.ready),
+    path("api/v1/game/account/login", game_accounts.login),
+    path("api/v1/game/account/session", game_accounts.session),
+    path("api/v1/game/account/logout", game_accounts.logout),
+    path("api/v1/game/tokens", game_accounts.service_token),
     path("internal/v1/game/login", api.game_login),
     path("internal/v1/game/introspect", api.introspect),
     path("internal/v1/game/revoke", api.revoke),

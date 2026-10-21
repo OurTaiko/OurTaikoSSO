@@ -3,7 +3,7 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from accounts.models import BrowserSession, GameSession, RateBucket
+from accounts.models import BrowserSession, GameAccount, GameSession, RateBucket
 
 
 class Command(BaseCommand):
@@ -14,6 +14,7 @@ class Command(BaseCommand):
         call_command("cleartokens")
         now = timezone.now()
         GameSession.objects.filter(expires_at__lte=now).delete()
+        GameAccount.objects.filter(expires_at__lte=now).delete()
         RateBucket.objects.filter(expires_at__lte=now).delete()
         BrowserSession.objects.exclude(session_key__in=Session.objects.values("session_key")).delete()
         self.stdout.write("Expired authentication records removed.")

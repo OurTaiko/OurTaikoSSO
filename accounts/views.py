@@ -24,7 +24,7 @@ from oauth2_provider.models import AccessToken, Application, Grant, IDToken, Ref
 
 from . import avatars
 from .forms import AvatarForm, EmailForm, LoginForm, ProfileForm, RegistrationForm, VerifiedPasswordResetForm
-from .models import BrowserSession, GameSession, User
+from .models import BrowserSession, GameAccount, GameSession, User
 from .security import allow_attempt, revoke_user_tokens
 
 
@@ -142,13 +142,17 @@ def resend_verification(request):
 @login_required
 def overview(request):
     games = GameSession.objects.filter(user=request.user, expires_at__gt=timezone.now())
+    accounts = GameAccount.objects.filter(user=request.user, expires_at__gt=timezone.now())
     apps = AccessToken.objects.filter(user=request.user, expires__gt=timezone.now())
     return render(
         request,
         "accounts/overview.html",
         {
             "active": "overview",
-            "connection_count": len(set(games.values_list("client_id", flat=True)))
+            "connection_count": len(
+                set(games.values_list("client_id", flat=True))
+                | set(accounts.values_list("client_id", flat=True))
+            )
             + len(set(apps.values_list("application_id", flat=True))),
         },
     )
@@ -318,12 +322,16 @@ def sessions(request):
     games = GameSession.objects.filter(user=request.user, expires_at__gt=timezone.now()).select_related(
         "client"
     )
+    accounts = GameAccount.objects.filter(user=request.user, expires_at__gt=timezone.now()).order_by(
+        "-last_used_at"
+    )
     return render(
         request,
         "accounts/sessions.html",
         {
             "active": "sessions",
             "browsers": browsers,
+            "accounts": accounts,
             "games": games,
             "current_key": request.session.session_key,
         },
@@ -344,6 +352,8 @@ def revoke_session(request):
                 return redirect("login")
     elif kind == "game":
         GameSession.objects.filter(user=request.user, pk=key).delete()
+    elif kind == "account":
+        GameAccount.objects.filter(user=request.user, pk=key).delete()
     else:
         raise Http404
     messages.success(request, _("该登录已撤销。"))
@@ -380,7 +390,11 @@ def connections(request):
     games = (
         GameSession.objects.filter(user=request.user, expires_at__gt=timezone.now())
         .values("client_id", "client__name")
-        .distinct()
+        .union(
+            GameAccount.objects.filter(user=request.user, expires_at__gt=timezone.now()).values(
+                "client_id", "client__name"
+            )
+        )
     )
     return render(
         request, "accounts/connections.html", {"active": "connections", "apps": apps, "game_apps": games}
@@ -393,6 +407,7 @@ def revoke_connection(request):
     key = request.POST.get("key")
     if request.POST.get("kind") == "game" and str(key).isdigit():
         GameSession.objects.filter(user=request.user, client_id=key).delete()
+        GameAccount.objects.filter(user=request.user, client_id=key).delete()
     elif request.POST.get("kind") == "web" and str(key).isdigit():
         with transaction.atomic():
             User.objects.select_for_update().get(pk=request.user.pk)

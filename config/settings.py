@@ -89,6 +89,10 @@ STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
+# Game accounts (/api/v1/game/account/*) belong to this public Application, created by
+# migration 0007. A sign-in expires this many days after its last use.
+GAME_ACCOUNT_CLIENT_ID = "OurTaikoPlay"
+GAME_ACCOUNT_IDLE_DAYS = 30
 # Avatars are re-encoded to WebP and stored under the "sso/" prefix of the bucket.
 # Credentials come from the AWS SDK chain (AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or a role).
 S3_BUCKET = os.getenv("S3_BUCKET", "")

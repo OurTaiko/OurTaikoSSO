@@ -27,7 +27,7 @@ class AccountAdmin(UserAdmin):
     list_display = ("username", "nickname", "email_verified", "is_active")
 
 
-ACCESS_FIELDS = ("enabled", "allow_game", "allow_profiles", "allow_web")
+ACCESS_FIELDS = ("enabled", "allow_game", "allow_account_tokens", "allow_profiles", "allow_web")
 
 
 class UnifiedApplicationForm(forms.ModelForm):
@@ -35,6 +35,11 @@ class UnifiedApplicationForm(forms.ModelForm):
     allow_game = forms.BooleanField(label="允许游戏登录和会话接口", required=False)
     allow_profiles = forms.BooleanField(label="允许用户资料查询", required=False)
     allow_web = forms.BooleanField(label="允许网站令牌查询和撤销", required=False)
+    allow_account_tokens = forms.BooleanField(
+        label="允许游戏账号换取本应用的游戏会话",
+        required=False,
+        help_text="开启后，OurTaikoPlay 登录的账号可以直接获得本应用的游戏会话，无需再输入密码。需同时允许游戏接口。",
+    )
 
     class Meta:
         model = Application
@@ -64,9 +69,11 @@ class UnifiedApplicationForm(forms.ModelForm):
     def clean(self):
         data = super().clean()
         if data.get("client_type") != Application.CLIENT_CONFIDENTIAL and any(
-            data.get(field) for field in ("allow_game", "allow_profiles", "allow_web")
+            data.get(field) for field in ("allow_game", "allow_account_tokens", "allow_profiles", "allow_web")
         ):
             raise forms.ValidationError("内部接口只允许能够保管密钥的 confidential 后端应用。")
+        if data.get("allow_account_tokens") and not data.get("allow_game"):
+            raise forms.ValidationError("游戏账号换取会话需要同时允许游戏登录和会话接口。")
         return data
 
 
@@ -77,7 +84,7 @@ class UnifiedApplicationAdmin(admin.ModelAdmin):
     fieldsets = (
         ("应用", {"fields": ("name", "client_id", "enabled", "credentials")}),
         ("登录方式", {"fields": ("client_type", "authorization_grant_type", "redirect_uris", "algorithm")}),
-        ("后端接口权限", {"fields": ("allow_game", "allow_profiles", "allow_web")}),
+        ("后端接口权限", {"fields": ("allow_game", "allow_account_tokens", "allow_profiles", "allow_web")}),
     )
 
     def get_readonly_fields(self, request, obj=None):

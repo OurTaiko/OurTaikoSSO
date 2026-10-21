@@ -96,3 +96,22 @@ Users upload JPG/JPEG/PNG/WebP files (≤ 5 MB, ≤ 40 MP) on the profile page (
 Avatars are public, like nicknames. They are served by the SSO at `GET /avatars/<user id>/<hash>.webp` (the bucket can stay private); the URL is content-addressed, so responses use `Cache-Control: public, max-age=31536000, immutable`, and a new upload yields a new URL. Inactive users' avatars return 404.
 
 `avatarUrl` (absolute, empty when unset) appears in `users/lookup-by-id`, `users/lookup-by-username` (and the deprecated `users/lookup` alias), and in the `user` object of `game/login`, `game/introspect` and `web/introspect`. OIDC exposes the standard `picture` claim under the `profile` scope, omitted when unset. Callers should cache by URL and fall back to an initial/placeholder when it is empty or fails to load.
+
+## 游戏账号（OurTaikoPlay 统一登录）
+
+游戏只登录一次 SSO，之后用游戏账号令牌为各业务服务换取普通游戏会话。账号令牌只发给 SSO，业务后端看不到它，也不认它；换来的游戏会话与该服务自己的 `game/login` 发出的完全相同（64 位 hex、7 天、按 Application 隔离），业务后端用原有 introspect 校验，无需改动。
+
+这些接口供游戏直接调用：JSON，不使用 Cookie，带浏览器 `Origin` 的请求返回 403，响应 `Cache-Control: no-store`。
+
+| 路径 | 请求 | 响应 |
+|---|---|---|
+| `POST /api/v1/game/account/login` | `{username, password, deviceName?}` | `{token, expiresAt, user}` |
+| `GET /api/v1/game/account/session` | `Authorization: Bearer <token>` | `{expiresAt, user}`；无效 401 |
+| `POST /api/v1/game/account/logout` | `Authorization: Bearer <token>` | `{ok:true}`，重复调用同样成功 |
+| `POST /api/v1/game/tokens` | Bearer 账号令牌，`{service}`（目标 Application 的 Client ID） | `{user, accessToken, expiresIn}`，同 `game/login` |
+
+- `user` 为 `{id, username, nickname, avatarUrl, preferredLanguage}`；`game/tokens` 的 `user` 与 `game/login` 相同（含该应用的 `isAdmin`）。
+- 账号令牌 64 位 hex，只存哈希，属于 migration 0007 创建的公开 Application `OurTaikoPlay`（无密钥、无回调，不能参与任何 OAuth 流程；在后台停用它即停用全部游戏账号）。**30 天未使用即过期**（`GAME_ACCOUNT_IDLE_DAYS`），每次成功使用把过期时间延到使用时刻后 30 天（最多每分钟写一次），不设绝对上限。
+- 登录沿用账号与 IP 限流（429 `RATE_LIMITED`）。`deviceName` 去掉控制字符后最多 80 字符，显示在账号中心「登录设备」页，可单独退出。
+- 改密码、停用账号、「退出所有设备」会删除全部账号令牌和游戏会话；`cleanup_auth` 清理过期的账号令牌。
+- 只有在后台同时开启「允许游戏登录和会话接口」与「允许游戏账号换取本应用的游戏会话」的 confidential Application 才能被换取；否则 403 `SERVICE_FORBIDDEN`。

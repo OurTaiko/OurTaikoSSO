@@ -92,6 +92,7 @@ class ApplicationAccess(models.Model):
     allow_game = models.BooleanField(default=False, verbose_name="允许游戏登录和会话接口")
     allow_profiles = models.BooleanField(default=False, verbose_name="允许用户资料查询")
     allow_web = models.BooleanField(default=False, verbose_name="允许网站令牌查询和撤销")
+    allow_account_tokens = models.BooleanField(default=False, verbose_name="允许游戏账号换取本应用的游戏会话")
 
     class Meta:
         verbose_name = "应用接口权限"
@@ -117,6 +118,24 @@ class GameSession(models.Model):
     )
     auth_version = models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(db_index=True)
+
+
+class GameAccount(models.Model):
+    """A game client's sign-in: a long-lived token that slides forward on each use.
+
+    It is only ever sent to the SSO, which trades it for per-service game sessions.
+    """
+
+    token_hash = models.CharField(primary_key=True, max_length=64)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    client = models.ForeignKey(
+        "oauth2_provider.Application", on_delete=models.CASCADE, verbose_name="Application"
+    )
+    auth_version = models.PositiveIntegerField()
+    device_name = models.CharField(max_length=80, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField()
     expires_at = models.DateTimeField(db_index=True)
 
 

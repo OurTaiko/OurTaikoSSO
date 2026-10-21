@@ -98,7 +98,8 @@ class ClientAdminTests(TestCase):
         self.assertNotContains(index, "/accounts/gameclient/")
         response = self.client.post(self.add_url, {**self.data, "client_type": "public"})
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(Application.objects.exists())
+        # Only the game client from migration 0007 exists.
+        self.assertFalse(Application.objects.exclude(client_id="OurTaikoPlay").exists())
         form = self.client.get(self.add_url)
         self.assertNotContains(form, "accept_legacy")
         self.assertNotContains(form, "迁移兼容")
