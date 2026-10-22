@@ -93,6 +93,9 @@ STORAGES = {
 # migration 0007. A sign-in expires this many days after its last use.
 GAME_ACCOUNT_CLIENT_ID = "OurTaikoPlay"
 GAME_ACCOUNT_IDLE_DAYS = 30
+# cleanup_auth deletes an account whose email was never confirmed and that never signed in
+# this many days after registering, freeing its name and email.
+UNVERIFIED_ACCOUNT_DAYS = 1
 # Avatars are re-encoded to WebP and stored under the "sso/" prefix of the bucket.
 # Credentials come from the AWS SDK chain (AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or a role).
 S3_BUCKET = os.getenv("S3_BUCKET", "")
