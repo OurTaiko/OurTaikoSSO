@@ -1,6 +1,6 @@
 """Reproducible local-only upgrade/backup-restore drill with synthetic data.
 
-Build images first (see docs/APPLICATION-MIGRATION.md). This script never uses
+Build images first (see OurTaikoLogs/OurTaikoSSO/docs/APPLICATION-MIGRATION.md). This script never uses
 SSH, production env, or another Compose project. Existing lab data is refused.
 """
 

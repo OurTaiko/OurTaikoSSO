@@ -1,6 +1,10 @@
 # OurTaikoSSO
 
-独立的本地账号中心：Django 5.2 LTS 一体化页面和后端，Django OAuth Toolkit 提供 OIDC 授权码 + PKCE。游戏通过受保护的服务端兼容接口认证，YataiDON 的登录协议不需要改变。
+数据库表、字段、索引和认证数据生命周期见 [数据库结构文档](https://github.com/OurTaiko/OurTaikoLogs/blob/main/OurTaikoSSO/docs/DATABASE.md)。
+
+独立账号中心：Django 5.2 LTS 一体化页面和后端，Django OAuth Toolkit 提供 OIDC 授权码 + PKCE。游戏通过受保护的服务端兼容接口认证，YataiDON 的登录协议不需要改变。
+
+正式账号中心：**https://sso.ourtaiko.org**。其他平台接入请阅读 **[中文接入教程](https://github.com/OurTaiko/OurTaikoLogs/blob/main/OurTaikoSSO/docs/INTEGRATION.md)**，包含管理员登记应用、向接入方交付配置、网站登录回调、会话撤销和可信游戏后端接入。
 
 ## 本地运行
 
@@ -63,7 +67,7 @@ sh scripts/dev.sh
 
 ## 游戏后端接入
 
-详见 [API.md](docs/API.md)。Fanmade/ESE 的公开 `/api/v1/game/login` 保持不变，由它们的后端调用：
+详见 [API.md](https://github.com/OurTaiko/OurTaikoLogs/blob/main/OurTaikoSSO/docs/API.md)。Fanmade/ESE 的公开 `/api/v1/game/login` 保持不变，由它们的后端调用：
 
 ```text
 POST /internal/v1/game/login
@@ -76,15 +80,15 @@ Content-Type: application/json
 
 成功响应保持现有 `user / accessToken / expiresIn` 结构。业务后端在需要身份时调用 introspect，使用返回的 `user.id` 保存业务记录，不接受客户端声明的用户 ID。服务密钥只保存在业务后端，不能打包进 YataiDON 或网页。
 
-此项目只完成独立账号中心。**现有 Fanmade 网站、Fanmade 后端和 YataiDON 尚未切换到这个 SSO；ESE 曲库服务也不属于本项目。** 本地演示应用用于验证标准网站登录流程，不代表旧网站已接入。
+Fanmade 网站和后端已接入本 SSO；YataiDON 沿用 Fanmade 游戏 API，由业务后端转接认证。ESE 曲库服务不属于本项目，不能由这些兼容接口推断其已经上线。
 
 ## 网站接入
 
-发现文档：`http://127.0.0.1:8090/.well-known/openid-configuration`。每个网站注册单独的 confidential client 和明确的回调地址；使用 Authorization Code + S256 PKCE，请求 `openid profile`。业务端校验 state、nonce、签名、issuer、audience、有效期并建立自己的会话。
+完整步骤见 [中文接入教程](https://github.com/OurTaiko/OurTaikoLogs/blob/main/OurTaikoSSO/docs/INTEGRATION.md)。生产发现文档：`https://sso.ourtaiko.org/.well-known/openid-configuration`；本地为 `http://127.0.0.1:8090/.well-known/openid-configuration`。每个网站注册单独的 confidential client 和明确的回调地址；使用 Authorization Code + S256 PKCE，请求 `openid profile`。业务端校验 state、nonce、签名、issuer、audience、有效期并建立自己的会话。
 
-`sub` 是稳定的 32 位用户 ID。`profile` scope 提供 nickname 和 preferred_username，不提供邮箱或全局管理员权限。第三方应用公开自助注册未启用；由管理员配置客户端。游戏兼容认证与 OIDC 授权流程是两套端点，使用不同凭证。
+`sub` 是稳定的 32 位用户 ID。`profile` scope 提供 nickname、preferred_username 和 locale，不提供邮箱或全局管理员权限。第三方应用公开自助注册未启用；由管理员配置客户端。游戏兼容认证与 OIDC 授权流程是两套端点，使用不同凭证。
 
-撤销授权会撤销 SSO 保存的凭证，但不自动删除外部网站已建立的本地会话；接入方需要落实会话过期和撤销策略。本开发版未实现跨站 back-channel logout。
+撤销授权会撤销 SSO 保存的凭证，但不自动删除外部网站已建立的本地会话；接入方需要落实会话过期和撤销策略。当前未实现跨站 back-channel logout。
 
 ## 验证与维护
 
@@ -100,9 +104,9 @@ Content-Type: application/json
 
 `cleanup_auth` 清理已过期会话、授权 token 和限流记录，部署后适合每天运行。`/healthz` 检查进程，`/readyz` 检查数据库连接。
 
-## 开发版边界
+## 部署与接入边界
 
-本轮为本地开发：没有部署公网、没有发送真实邮件，没有更改原业务数据库。生产部署需单独配置 HTTPS、服务凭证及允许的回调地址，设置 `DJANGO_DEBUG=false`，使用生产 WSGI/ASGI 服务和静态资源托管。代理来源头默认不受信任；业务后端和入口代理还应对原始客户端的登录请求限流。
+项目已有生产部署。技术文档与发布记录放在私有仓库 OurTaikoLogs 的 `OurTaikoSSO/`（当前待办在那里的 `AGENTS.md`）；状态记录见 [生产部署记录](https://github.com/OurTaiko/OurTaikoLogs/blob/main/OurTaikoSSO/docs/PRODUCTION.md)，部署方法见 [部署说明](deploy/README.md)。独立部署需配置 HTTPS、服务凭证及允许的回调地址，设置 `DJANGO_DEBUG=false`，使用生产 WSGI/ASGI 服务和静态资源托管。代理来源头默认不受信任；业务后端和入口代理还应对原始客户端的登录请求限流。
 
 不能通过给多个网站共享 `.ourtaiko.org` Cookie 来代替 OIDC。业务后端无需连接用户数据库，昵称通过受保护的批量接口获取，可在业务服务内短暂缓存。
 

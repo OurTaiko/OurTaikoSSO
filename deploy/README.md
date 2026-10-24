@@ -1,9 +1,9 @@
 # Deployment
 
 For the new portable **SSO + PostgreSQL** stack and the separately deployed
-Fanmade backend, see [Docker migration drill](DOCKER.md). The shared database
+Fanmade backend, see [Docker migration drill](https://github.com/OurTaiko/OurTaikoLogs/blob/main/OurTaikoSSO/docs/DOCKER.md). The shared database
 Compose belongs to this repository. Production switched to `compose.production.yml`
-on 2026-09-24; see [current production topology, backups and validation](PRODUCTION.md).
+on 2026-09-24; see [current production topology, backups and validation](https://github.com/OurTaiko/OurTaikoLogs/blob/main/OurTaikoSSO/docs/PRODUCTION.md).
 `compose.postgres.legacy.yml` preserves the pre-migration layout for reference only.
 The instructions below describe the previous 1Panel host-network deployment.
 
