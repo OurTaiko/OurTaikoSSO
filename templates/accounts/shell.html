@@ -13,7 +13,7 @@
 </nav>
 <div class="sidebar-bottom"><div class="account-mini"><div class="mini-avatar">{% include 'accounts/avatar.html' with size=34 %}</div><div><strong>{{ user.nickname }}</strong><span>@{{ user.username }}</span></div></div><form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="logout"><svg><use href="#i-out"/></svg>{% translate '退出登录' %}</button></form></div>
 </aside>
-<div class="workspace"><header class="topbar"><span>OurTaiko <span class="slash">/</span> {% translate '账号中心' %}</span>{% if dev_mode %}<span class="environment"><span></span>{% translate '本地开发环境' %}</span>{% endif %}<form class="mobile-logout" action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="logout" aria-label="{% translate '退出登录' %}"><svg><use href="#i-out"/></svg></button></form></header>
+<div class="workspace"><header class="topbar"><span>OurTaiko <span class="slash">/</span> {% translate '账号中心' %}</span>{% if dev_mode %}<span class="environment"><span></span>{% translate '本地开发环境' %}</span>{% endif %}{% include 'accounts/language.html' %}<form class="mobile-logout" action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="logout" aria-label="{% translate '退出登录' %}"><svg><use href="#i-out"/></svg></button></form></header>
 <main id="main" class="page-content">{% include 'accounts/messages.html' %}{% block content %}{% endblock %}</main>
 <footer class="page-footer"><span>{% translate 'OurTaiko 账号中心' %}</span><span>{% translate '属于你的节奏，始终相连。' %}</span></footer></div>
 </div>{% endblock %}

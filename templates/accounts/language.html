@@ -2,11 +2,11 @@
 <form class="language-picker" action="{% url 'set-language' %}" method="post">
   {% csrf_token %}
   <input type="hidden" name="next" value="{{ request.get_full_path }}">
-  <label for="site-language">{% translate "语言" %}</label>
+  <label class="visually-hidden" for="site-language">{% translate "语言" %}</label>
   <select id="site-language" name="language">
     {% for code, name in supported_languages %}
     <option value="{{ code }}" {% if code == LANGUAGE_CODE %}selected{% endif %}>{{ name }}</option>
     {% endfor %}
   </select>
-  <button class="button secondary" type="submit">{% translate "应用语言" %}</button>
+  <button class="language-apply" type="submit">{% translate "应用语言" %}</button>
 </form>
