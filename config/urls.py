@@ -53,6 +53,8 @@ urlpatterns = [
     path("internal/v1/users/search", api.search_profiles),
     path("internal/v1/web/introspect", api.web_introspect),
     path("internal/v1/web/revoke", api.web_revoke),
+    path("internal/v1/external/lookup", api.external_lookup),
+    path("internal/v1/external/link", api.external_link),
     path(".well-known/openid-configuration", oauth_views.ConnectDiscoveryInfoView.as_view()),
     path("o/", include((oauth_patterns, "oauth2_provider"), namespace="oauth2_provider")),
     path("admin/", admin.site.urls),

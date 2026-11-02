@@ -4,17 +4,19 @@ import secrets
 from datetime import timedelta
 from functools import wraps
 
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import check_password
-from django.db import transaction
+from django.core.exceptions import RequestDataTooBig
+from django.db import IntegrityError, transaction
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.debug import sensitive_post_parameters
 from oauth2_provider.models import AccessToken, Application, RefreshToken, revoke_access_token
 
-from .models import ApplicationAccess, ClientRole, GameSession, User
-from .security import digest, login_allowed
+from .models import ApplicationAccess, ClientRole, ExternalAudit, ExternalLink, GameSession, User
+from .security import allow_attempt, digest, login_allowed
 
 TOKEN_TTL = 7 * 86400
 
@@ -23,53 +25,73 @@ def problem(status, code, message):
     return JsonResponse({"code": code, "message": message}, status=status)
 
 
-def service_endpoint(view):
-    @csrf_exempt
-    @sensitive_post_parameters()
-    @wraps(view)
-    def wrapped(request):
-        if request.method != "POST":
-            response = problem(405, "METHOD_NOT_ALLOWED", "请使用 POST")
-            response["Allow"] = "POST"
-            return response
-        if request.headers.get("Origin"):
-            return problem(403, "ORIGIN_INVALID", "此接口仅供业务后端调用")
-        service_id = request.headers.get("X-Service-ID", "")
-        key = request.headers.get("X-Service-Key", "")
-        if not service_id or not key or len(service_id) > 100 or len(key) > 1024:
-            return problem(401, "SERVICE_UNAUTHORIZED", "业务服务凭证无效")
-        # The OAuth Application is the only service identity.
-        client = Application.objects.filter(client_id=service_id).first()
-        access = ApplicationAccess.objects.filter(application=client).first() if client else None
-        authenticated = bool(
-            access
-            and access.enabled
-            and client.client_type == Application.CLIENT_CONFIDENTIAL
-            and client.hash_client_secret
-            and check_password(key, client.client_secret)
-        )
-        if not authenticated:
-            return problem(401, "SERVICE_UNAUTHORIZED", "业务服务凭证无效")
-        capability = (
-            "allow_game"
-            if view.__name__ in {"game_login", "introspect", "revoke"}
-            else "allow_web"
-            if view.__name__ in {"web_introspect", "web_revoke"}
-            else "allow_profiles"
-        )
-        if not getattr(access, capability):
-            return problem(403, "SERVICE_FORBIDDEN", "此应用未获准使用该接口")
-        if request.content_type != "application/json":
-            return problem(415, "CONTENT_TYPE_INVALID", "请使用 JSON")
-        try:
-            body = json.loads(request.body)
-        except (ValueError, UnicodeError):
-            return problem(400, "REQUEST_INVALID", "请求格式不正确")
-        if not isinstance(body, dict):
-            return problem(400, "REQUEST_INVALID", "请求必须是 JSON 对象")
-        return view(request, client, body)
+def envelope(status, code, message="", data=None):
+    """The external interface's body: always {code, message, data}, never cached."""
+    response = JsonResponse({"code": code, "message": message, "data": data}, status=status)
+    response["Cache-Control"] = "no-store"
+    return response
 
-    return wrapped
+
+def service_endpoint(capability, *, external=False):
+    """Authenticate a business backend by its Application and require one ApplicationAccess flag.
+
+    External endpoints answer every outcome, including authentication failures, in the
+    {code, message, data} envelope and accept at most 32 KiB of JSON.
+    """
+    fail = envelope if external else problem
+
+    def decorator(view):
+        @csrf_exempt
+        @sensitive_post_parameters()
+        @wraps(view)
+        def wrapped(request):
+            if request.method != "POST":
+                response = fail(405, "METHOD_NOT_ALLOWED", "请使用 POST")
+                response["Allow"] = "POST"
+                return response
+            if request.headers.get("Origin"):
+                return fail(403, "ORIGIN_INVALID", "此接口仅供业务后端调用")
+            service_id = request.headers.get("X-Service-ID", "")
+            key = request.headers.get("X-Service-Key", "")
+            if not service_id or not key or len(service_id) > 100 or len(key) > 1024:
+                return fail(401, "SERVICE_UNAUTHORIZED", "业务服务凭证无效")
+            # The OAuth Application is the only service identity.
+            client = Application.objects.filter(client_id=service_id).first()
+            access = ApplicationAccess.objects.filter(application=client).first() if client else None
+            authenticated = bool(
+                access
+                and access.enabled
+                and client.client_type == Application.CLIENT_CONFIDENTIAL
+                and client.hash_client_secret
+                and check_password(key, client.client_secret)
+            )
+            if not authenticated:
+                return fail(401, "SERVICE_UNAUTHORIZED", "业务服务凭证无效")
+            allowed = getattr(access, capability)
+            if external:
+                # The binding table belongs to Sakura alone; a flag switched on by mistake for
+                # another application must not let it read emails or write bindings.
+                allowed = allowed and bool(settings.SAKURA_CLIENT_ID) and client.client_id == settings.SAKURA_CLIENT_ID
+            if not allowed:
+                return fail(403, "SERVICE_FORBIDDEN", "此应用未获准使用该接口")
+            if request.content_type != "application/json":
+                return fail(415, "CONTENT_TYPE_INVALID", "请使用 JSON")
+            try:
+                raw = request.body
+            except RequestDataTooBig:
+                # DATA_UPLOAD_MAX_MEMORY_SIZE (32 KiB) is the protocol's body limit.
+                return fail(400, "REQUEST_INVALID", "请求体过大")
+            try:
+                body = json.loads(raw)
+            except (ValueError, UnicodeError):
+                return fail(400, "REQUEST_INVALID", "请求格式不正确")
+            if not isinstance(body, dict):
+                return fail(400, "REQUEST_INVALID", "请求必须是 JSON 对象")
+            return view(request, client, body)
+
+        return wrapped
+
+    return decorator
 
 
 def avatar_url(user):
@@ -88,7 +110,7 @@ def user_payload(user, client):
     }
 
 
-@service_endpoint
+@service_endpoint("allow_game")
 def game_login(request, client, body):
     if set(body) != {"username", "password"} or not all(isinstance(v, str) for v in body.values()):
         return problem(400, "REQUEST_INVALID", "需要 username 和 password")
@@ -136,7 +158,7 @@ def find_session(client, body):
     return None
 
 
-@service_endpoint
+@service_endpoint("allow_game")
 def introspect(request, client, body):
     session = find_session(client, body)
     if session is None:
@@ -146,7 +168,7 @@ def introspect(request, client, body):
     )
 
 
-@service_endpoint
+@service_endpoint("allow_game")
 def revoke(request, client, body):
     session = find_session(client, body)
     if session:
@@ -154,7 +176,7 @@ def revoke(request, client, body):
     return JsonResponse({"ok": True})
 
 
-@service_endpoint
+@service_endpoint("allow_profiles")
 def profiles(request, client, body):
     ids = body.get("userIds")
     if (
@@ -170,7 +192,7 @@ def profiles(request, client, body):
     )
 
 
-@service_endpoint
+@service_endpoint("allow_profiles")
 def profiles_by_username(request, client, body):
     usernames = body.get("usernames")
     if (
@@ -206,7 +228,7 @@ def web_session(client, body, *, include_expired=False):
     )
 
 
-@service_endpoint
+@service_endpoint("allow_web")
 def web_introspect(request, client, body):
     token = web_session(client, body)
     if token is None or "openid" not in token.scope.split():
@@ -214,7 +236,7 @@ def web_introspect(request, client, body):
     return JsonResponse({"user": user_payload(token.user, client), "expiresAt": token.expires.isoformat()})
 
 
-@service_endpoint
+@service_endpoint("allow_web")
 def web_revoke(request, client, body):
     if set(body) - {"accessToken", "refreshToken"}:
         return problem(400, "REQUEST_INVALID", "凭证格式不正确")
@@ -242,7 +264,7 @@ def web_revoke(request, client, body):
     return JsonResponse({"ok": True})
 
 
-@service_endpoint
+@service_endpoint("allow_profiles")
 def search_profiles(request, client, body):
     query, after = body.get("query"), body.get("after", "")
     if set(body) - {"query", "after"} or not isinstance(query, str) or not 1 <= len(query) <= 200:
@@ -255,3 +277,82 @@ def search_profiles(request, client, body):
         .values_list("id", flat=True)[:1001]
     )
     return JsonResponse({"userIds": ids[:1000], "next": ids[999] if len(ids) > 1000 else ""})
+
+
+OURTAIKO_ID = re.compile(r"[0-9a-f]{32}")
+SAKURA_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
+
+
+def external_result(client, action, status, code, message="", data=None, *, target="", external=""):
+    """Answer an external call and record it; the audit never holds email or nickname."""
+    ExternalAudit.objects.create(
+        application=client, action=action, target_id=target, external_id=external, result=code
+    )
+    response = envelope(status, code, message, data)
+    if code == "RATE_LIMITED":
+        response["Retry-After"] = "600"
+    return response
+
+
+def authorized_now(user, client):
+    """The account has just signed in to the caller through OIDC: it holds a live access token."""
+    return AccessToken.objects.filter(user=user, application=client, expires__gt=timezone.now()).exists()
+
+
+@service_endpoint("allow_external_link", external=True)
+def external_lookup(request, client, body):
+    target = body.get("id")
+    if set(body) != {"id"} or not isinstance(target, str) or not OURTAIKO_ID.fullmatch(target):
+        return external_result(client, "lookup", 400, "REQUEST_INVALID", "需要 32 位小写十六进制的 id")
+    app_ok = allow_attempt(f"external-lookup-app:{client.pk}", 600)
+    id_ok = allow_attempt(f"external-lookup-id:{target}", 60)
+    if not (app_ok and id_ok):
+        return external_result(client, "lookup", 429, "RATE_LIMITED", "查询过于频繁", target=target)
+    user = User.objects.filter(pk=target, is_active=True).first()
+    # Absent, disabled and not yours to see are deliberately the same answer.
+    if user is None or not (ExternalLink.objects.filter(user=user).exists() or authorized_now(user, client)):
+        return external_result(client, "lookup", 404, "NOT_FOUND", "账号不存在或无权查看", target=target)
+    if not user.email_verified or not user.email:
+        return external_result(client, "lookup", 409, "EMAIL_UNVERIFIED", "账号邮箱未验证", target=target)
+    data = {"id": user.pk, "nickname": user.nickname, "email": user.email, "emailVerified": True}
+    return external_result(client, "lookup", 200, "OK", data=data, target=target)
+
+
+@service_endpoint("allow_external_link", external=True)
+def external_link(request, client, body):
+    target, external = body.get("id"), body.get("externalId")
+    if (
+        set(body) != {"id", "externalId"}
+        or not isinstance(target, str)
+        or not OURTAIKO_ID.fullmatch(target)
+        or not isinstance(external, str)
+        or not SAKURA_ID.fullmatch(external)
+    ):
+        return external_result(client, "link", 400, "REQUEST_INVALID", "需要 id 与 externalId")
+    ids = {"target": target, "external": external}
+    if not allow_attempt(f"external-link-app:{client.pk}", 120):
+        return external_result(client, "link", 429, "RATE_LIMITED", "绑定过于频繁", **ids)
+
+    def linked(link):
+        data = {"id": link.user_id, "externalId": link.sakura_id, "linkedAt": link.created_at.isoformat()}
+        return external_result(client, "link", 200, "OK", data=data, **ids)
+
+    with transaction.atomic():
+        user = User.objects.select_for_update().filter(pk=target, is_active=True).first()
+        current = ExternalLink.objects.filter(user=user).first() if user else None
+        # Retrying the same pair succeeds even after the access token expired.
+        if current and current.sakura_id == external:
+            return linked(current)
+        # Without a fresh sign-in, do not reveal whether the account is bound.
+        if user is None or not authorized_now(user, client):
+            return external_result(client, "link", 404, "NOT_FOUND", "账号不存在或未授权", **ids)
+        if current or ExternalLink.objects.filter(sakura_id=external).exists():
+            return external_result(client, "link", 409, "ALREADY_LINKED", "任意一边已绑定其他账号", **ids)
+        try:
+            with transaction.atomic():
+                link = ExternalLink.objects.create(user=user, sakura_id=external)
+        except IntegrityError:
+            # Another account bound this Sakura ID concurrently; the user row is locked, so it
+            # cannot have been this account.
+            return external_result(client, "link", 409, "ALREADY_LINKED", "任意一边已绑定其他账号", **ids)
+    return linked(link)

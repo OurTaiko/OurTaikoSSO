@@ -93,6 +93,7 @@ class ApplicationAccess(models.Model):
     allow_profiles = models.BooleanField(default=False, verbose_name="允许用户资料查询")
     allow_web = models.BooleanField(default=False, verbose_name="允许网站令牌查询和撤销")
     allow_account_tokens = models.BooleanField(default=False, verbose_name="允许游戏账号换取本应用的游戏会话")
+    allow_external_link = models.BooleanField(default=False, verbose_name="允许 Sakura 外源查询和绑定")
 
     class Meta:
         verbose_name = "应用接口权限"
@@ -144,6 +145,42 @@ class BrowserSession(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     user_agent = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class ExternalLink(models.Model):
+    """A one-to-one binding between an OurTaiko account and a Sakura account.
+
+    Both primary key and sakura_id are unique, so neither side can be bound twice.
+    """
+
+    user = models.OneToOneField(User, primary_key=True, on_delete=models.CASCADE, related_name="external_link")
+    sakura_id = models.CharField(max_length=64, unique=True, verbose_name="Sakura ID")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="绑定时间")
+
+    class Meta:
+        verbose_name = "Sakura 绑定"
+        verbose_name_plural = "Sakura 绑定"
+
+
+class ExternalAudit(models.Model):
+    """One row per authenticated call to the external interface, kept EXTERNAL_AUDIT_DAYS days.
+
+    It never stores email, nickname or addresses; target_id is not a foreign key so the record
+    survives the account.
+    """
+
+    application = models.ForeignKey(
+        "oauth2_provider.Application", null=True, on_delete=models.SET_NULL, verbose_name="Application"
+    )
+    action = models.CharField(max_length=16)
+    target_id = models.CharField(max_length=32, blank=True)
+    external_id = models.CharField(max_length=64, blank=True)
+    result = models.CharField(max_length=32)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "外源接口审计"
+        verbose_name_plural = "外源接口审计"
 
 
 class RateBucket(models.Model):

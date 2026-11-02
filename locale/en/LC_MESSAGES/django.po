@@ -3,14 +3,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: OurTaiko SSO\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-21 21:41+0000\n"
+"POT-Creation-Date: 2026-11-02 06:50+0000\n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: accounts/admin.py:175
+#: accounts/admin.py:248
 msgid "OurTaiko 账号管理"
 msgstr "OurTaiko account administration"
 
@@ -238,11 +238,11 @@ msgstr "All sessions and authorizations revoked. Sign in again."
 msgid "应用授权已撤销。"
 msgstr "App authorization revoked."
 
-#: config/settings.py:180
+#: config/settings.py:188
 msgid "确认你的账号身份"
 msgstr "Confirm your account identity"
 
-#: config/settings.py:180
+#: config/settings.py:188
 msgid "读取你的昵称、登录名和偏好语言"
 msgstr "Read your nickname, username and preferred language"
 
@@ -304,6 +304,10 @@ msgstr "After revocation, the app must sign in again."
 #: templates/accounts/connections.html:3
 msgid "网站授权登录"
 msgstr "Website sign-in"
+
+#: templates/accounts/connections.html:3
+msgid "撤销授权不会解除账号绑定。解绑请联系管理员。"
+msgstr "Revoking access does not remove the account link. Contact an administrator to unlink."
 
 #: templates/accounts/connections.html:3
 msgid "撤销授权"
@@ -811,6 +815,10 @@ msgstr "Continue as %(nickname)s."
 #: templates/oauth2_provider/authorize.html:2
 msgid "这个应用申请以下权限"
 msgstr "This app requests the following permissions"
+
+#: templates/oauth2_provider/authorize.html:2
+msgid "读取你的邮箱，并把你的 OurTaiko 账号与该应用的账号绑定"
+msgstr "Read your email address and link your OurTaiko account to your account on this app"
 
 #: templates/oauth2_provider/authorize.html:2
 msgid "取消"

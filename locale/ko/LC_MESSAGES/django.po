@@ -3,14 +3,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: OurTaiko SSO\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-21 21:41+0000\n"
+"POT-Creation-Date: 2026-11-02 06:50+0000\n"
 "Language: ko\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-#: accounts/admin.py:175
+#: accounts/admin.py:248
 msgid "OurTaiko 账号管理"
 msgstr "OurTaiko 계정 관리"
 
@@ -238,11 +238,11 @@ msgstr "모든 로그인 및 인증 정보를 해제했습니다. 다시 로그�
 msgid "应用授权已撤销。"
 msgstr "앱 인증을 해제했습니다."
 
-#: config/settings.py:180
+#: config/settings.py:188
 msgid "确认你的账号身份"
 msgstr "계정 신원 확인"
 
-#: config/settings.py:180
+#: config/settings.py:188
 msgid "读取你的昵称、登录名和偏好语言"
 msgstr "닉네임, 로그인 이름, 선호 언어 읽기"
 
@@ -304,6 +304,10 @@ msgstr "해제하면 해당 앱은 다시 로그인해야 합니다."
 #: templates/accounts/connections.html:3
 msgid "网站授权登录"
 msgstr "웹사이트 로그인"
+
+#: templates/accounts/connections.html:3
+msgid "撤销授权不会解除账号绑定。解绑请联系管理员。"
+msgstr "권한을 취소해도 계정 연동은 해제되지 않습니다. 연동 해제는 관리자에게 문의하세요."
 
 #: templates/accounts/connections.html:3
 msgid "撤销授权"
@@ -810,6 +814,10 @@ msgstr "%(nickname)s(으)로 계속합니다."
 #: templates/oauth2_provider/authorize.html:2
 msgid "这个应用申请以下权限"
 msgstr "이 앱이 다음 권한을 요청합니다"
+
+#: templates/oauth2_provider/authorize.html:2
+msgid "读取你的邮箱，并把你的 OurTaiko 账号与该应用的账号绑定"
+msgstr "이메일 주소를 읽고, OurTaiko 계정을 이 앱의 계정과 연동합니다"
 
 #: templates/oauth2_provider/authorize.html:2
 msgid "取消"
