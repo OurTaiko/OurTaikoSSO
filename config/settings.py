@@ -93,10 +93,7 @@ STORAGES = {
 # migration 0007. A sign-in expires this many days after its last use.
 GAME_ACCOUNT_CLIENT_ID = "OurTaikoPlay"
 GAME_ACCOUNT_IDLE_DAYS = 30
-# The external interface (/internal/v1/external/*, see SAKURA-PROTOCOL.md in OurTaikoLogs) is
-# open only to the Application with this client_id, and only once allow_external_link is on.
-# Empty keeps it closed to everyone.
-SAKURA_CLIENT_ID = os.getenv("SAKURA_CLIENT_ID", "")
+# cleanup_auth deletes external interface audit rows (/internal/v1/external/*) after this many days.
 EXTERNAL_AUDIT_DAYS = 90
 # cleanup_auth deletes an account whose email was never confirmed and that never signed in
 # this many days after registering, freeing its name and email.

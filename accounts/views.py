@@ -24,7 +24,7 @@ from oauth2_provider.models import AccessToken, Application, Grant, IDToken, Ref
 
 from . import avatars
 from .forms import AvatarForm, EmailForm, LoginForm, ProfileForm, RegistrationForm, VerifiedPasswordResetForm
-from .models import BrowserSession, GameAccount, GameSession, User
+from .models import BrowserSession, ExternalLink, GameAccount, GameSession, User
 from .security import allow_attempt, revoke_user_tokens
 
 
@@ -396,8 +396,12 @@ def connections(request):
             )
         )
     )
+    # Revoking a website sign-in leaves the account binding of that application in place.
+    linked = set(ExternalLink.objects.filter(user=request.user).values_list("application_id", flat=True))
     return render(
-        request, "accounts/connections.html", {"active": "connections", "apps": apps, "game_apps": games}
+        request,
+        "accounts/connections.html",
+        {"active": "connections", "apps": apps, "game_apps": games, "linked_app_ids": linked},
     )
 
 

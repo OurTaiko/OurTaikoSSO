@@ -1,7 +1,6 @@
 import secrets
 
 from django import forms
-from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
 from django.core.exceptions import PermissionDenied
@@ -49,9 +48,9 @@ class UnifiedApplicationForm(forms.ModelForm):
         help_text="开启后，OurTaikoPlay 登录的账号可以直接获得本应用的游戏会话，无需再输入密码。需同时允许游戏接口。",
     )
     allow_external_link = forms.BooleanField(
-        label="允许 Sakura 外源查询和绑定",
+        label="允许外源账号查询和绑定",
         required=False,
-        help_text="只能开在 client_id 等于服务器配置 SAKURA_CLIENT_ID 的网站登录应用上。开启后它能读取已授权或已绑定账号的邮箱。",
+        help_text="供另一个平台把它的账号与 OurTaiko 账号绑定：可以读取刚授权或已与本应用绑定的账号的昵称和邮箱，并建立绑定。只能开在 confidential 的网站登录应用上。",
     )
 
     class Meta:
@@ -87,17 +86,12 @@ class UnifiedApplicationForm(forms.ModelForm):
             raise forms.ValidationError("内部接口只允许能够保管密钥的 confidential 后端应用。")
         if data.get("allow_account_tokens") and not data.get("allow_game"):
             raise forms.ValidationError("游戏账号换取会话需要同时允许游戏登录和会话接口。")
-        if data.get("allow_external_link"):
-            client_id = self.instance.client_id if self.instance.pk else data.get("client_id")
-            if (
-                not settings.SAKURA_CLIENT_ID
-                or client_id != settings.SAKURA_CLIENT_ID
-                or data.get("client_type") != Application.CLIENT_CONFIDENTIAL
-                or data.get("authorization_grant_type") != Application.GRANT_AUTHORIZATION_CODE
-            ):
-                raise forms.ValidationError(
-                    "Sakura 外源接口只能开在 client_id 等于 SAKURA_CLIENT_ID、confidential 的网站登录应用上。"
-                )
+        # Lookup and link are granted by the user signing in to this application through OIDC.
+        if data.get("allow_external_link") and (
+            data.get("client_type") != Application.CLIENT_CONFIDENTIAL
+            or data.get("authorization_grant_type") != Application.GRANT_AUTHORIZATION_CODE
+        ):
+            raise forms.ValidationError("外源账号查询和绑定只能开在 confidential 的网站登录应用上。")
         return data
 
 
@@ -201,16 +195,17 @@ class ClientRoleAdmin(admin.ModelAdmin):
 
 @admin.register(ExternalLink)
 class ExternalLinkAdmin(admin.ModelAdmin):
-    """Bindings are created only by Sakura through /internal/v1/external/link.
+    """Bindings are created only by their Application through /internal/v1/external/link.
 
-    Only a superuser may delete (unbind) one, one at a time. Sakura's unlink interface is not
-    available yet, so deleting here clears only the OurTaiko side; tell Sakura to clear theirs.
+    Only a superuser may delete (unbind) one, one at a time. No platform offers an unlink
+    interface yet, so deleting here clears only the OurTaiko side; tell the platform to clear theirs.
     """
 
-    list_display = ("user", "sakura_id", "created_at")
-    list_select_related = ("user",)
-    search_fields = ("user__username", "user__id", "sakura_id")
-    readonly_fields = ("user", "sakura_id", "created_at")
+    list_display = ("application", "user", "external_id", "created_at")
+    list_select_related = ("application", "user")
+    list_filter = ("application",)
+    search_fields = ("user__username", "user__id", "external_id")
+    readonly_fields = ("application", "user", "external_id", "created_at")
     actions = None
 
     def has_add_permission(self, request):
@@ -224,7 +219,9 @@ class ExternalLinkAdmin(admin.ModelAdmin):
 
     def delete_model(self, request, obj):
         super().delete_model(request, obj)
-        messages.warning(request, f"已删除 OurTaiko 一侧的绑定。请通知 Sakura 删除 Sakura ID {obj.sakura_id} 的绑定。")
+        messages.warning(
+            request, f"已删除 OurTaiko 一侧的绑定。请通知 {obj.application.name} 删除外部账号 {obj.external_id} 的绑定。"
+        )
 
 
 @admin.register(ExternalAudit)

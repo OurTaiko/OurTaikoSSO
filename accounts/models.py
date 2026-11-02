@@ -93,7 +93,7 @@ class ApplicationAccess(models.Model):
     allow_profiles = models.BooleanField(default=False, verbose_name="允许用户资料查询")
     allow_web = models.BooleanField(default=False, verbose_name="允许网站令牌查询和撤销")
     allow_account_tokens = models.BooleanField(default=False, verbose_name="允许游戏账号换取本应用的游戏会话")
-    allow_external_link = models.BooleanField(default=False, verbose_name="允许 Sakura 外源查询和绑定")
+    allow_external_link = models.BooleanField(default=False, verbose_name="允许外源账号查询和绑定")
 
     class Meta:
         verbose_name = "应用接口权限"
@@ -148,18 +148,29 @@ class BrowserSession(models.Model):
 
 
 class ExternalLink(models.Model):
-    """A one-to-one binding between an OurTaiko account and a Sakura account.
+    """Binds an OurTaiko account to an account on another platform, one Application per platform.
 
-    Both primary key and sakura_id are unique, so neither side can be bound twice.
+    Within one Application the binding is one-to-one: each OurTaiko account and each external ID
+    appears at most once. An account may be bound on several Applications.
     """
 
-    user = models.OneToOneField(User, primary_key=True, on_delete=models.CASCADE, related_name="external_link")
-    sakura_id = models.CharField(max_length=64, unique=True, verbose_name="Sakura ID")
+    application = models.ForeignKey(
+        "oauth2_provider.Application",
+        on_delete=models.CASCADE,
+        related_name="external_links",
+        verbose_name="Application",
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="external_links")
+    external_id = models.CharField(max_length=64, verbose_name="外部账号 ID")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="绑定时间")
 
     class Meta:
-        verbose_name = "Sakura 绑定"
-        verbose_name_plural = "Sakura 绑定"
+        verbose_name = "外源账号绑定"
+        verbose_name_plural = "外源账号绑定"
+        constraints = [
+            models.UniqueConstraint(fields=["application", "user"], name="sso_unique_external_user"),
+            models.UniqueConstraint(fields=["application", "external_id"], name="sso_unique_external_id"),
+        ]
 
 
 class ExternalAudit(models.Model):

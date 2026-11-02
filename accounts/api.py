@@ -4,7 +4,6 @@ import secrets
 from datetime import timedelta
 from functools import wraps
 
-from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import check_password
 from django.core.exceptions import RequestDataTooBig
@@ -67,12 +66,7 @@ def service_endpoint(capability, *, external=False):
             )
             if not authenticated:
                 return fail(401, "SERVICE_UNAUTHORIZED", "业务服务凭证无效")
-            allowed = getattr(access, capability)
-            if external:
-                # The binding table belongs to Sakura alone; a flag switched on by mistake for
-                # another application must not let it read emails or write bindings.
-                allowed = allowed and bool(settings.SAKURA_CLIENT_ID) and client.client_id == settings.SAKURA_CLIENT_ID
-            if not allowed:
+            if not getattr(access, capability):
                 return fail(403, "SERVICE_FORBIDDEN", "此应用未获准使用该接口")
             if request.content_type != "application/json":
                 return fail(415, "CONTENT_TYPE_INVALID", "请使用 JSON")
@@ -280,7 +274,7 @@ def search_profiles(request, client, body):
 
 
 OURTAIKO_ID = re.compile(r"[0-9a-f]{32}")
-SAKURA_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
+EXTERNAL_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
 
 
 def external_result(client, action, status, code, message="", data=None, *, target="", external=""):
@@ -305,12 +299,13 @@ def external_lookup(request, client, body):
     if set(body) != {"id"} or not isinstance(target, str) or not OURTAIKO_ID.fullmatch(target):
         return external_result(client, "lookup", 400, "REQUEST_INVALID", "需要 32 位小写十六进制的 id")
     app_ok = allow_attempt(f"external-lookup-app:{client.pk}", 600)
-    id_ok = allow_attempt(f"external-lookup-id:{target}", 60)
+    id_ok = allow_attempt(f"external-lookup-id:{client.pk}:{target}", 60)
     if not (app_ok and id_ok):
         return external_result(client, "lookup", 429, "RATE_LIMITED", "查询过于频繁", target=target)
     user = User.objects.filter(pk=target, is_active=True).first()
     # Absent, disabled and not yours to see are deliberately the same answer.
-    if user is None or not (ExternalLink.objects.filter(user=user).exists() or authorized_now(user, client)):
+    bound = user is not None and ExternalLink.objects.filter(application=client, user=user).exists()
+    if user is None or not (bound or authorized_now(user, client)):
         return external_result(client, "lookup", 404, "NOT_FOUND", "账号不存在或无权查看", target=target)
     if not user.email_verified or not user.email:
         return external_result(client, "lookup", 409, "EMAIL_UNVERIFIED", "账号邮箱未验证", target=target)
@@ -326,7 +321,7 @@ def external_link(request, client, body):
         or not isinstance(target, str)
         or not OURTAIKO_ID.fullmatch(target)
         or not isinstance(external, str)
-        or not SAKURA_ID.fullmatch(external)
+        or not EXTERNAL_ID.fullmatch(external)
     ):
         return external_result(client, "link", 400, "REQUEST_INVALID", "需要 id 与 externalId")
     ids = {"target": target, "external": external}
@@ -334,25 +329,25 @@ def external_link(request, client, body):
         return external_result(client, "link", 429, "RATE_LIMITED", "绑定过于频繁", **ids)
 
     def linked(link):
-        data = {"id": link.user_id, "externalId": link.sakura_id, "linkedAt": link.created_at.isoformat()}
+        data = {"id": link.user_id, "externalId": link.external_id, "linkedAt": link.created_at.isoformat()}
         return external_result(client, "link", 200, "OK", data=data, **ids)
 
     with transaction.atomic():
         user = User.objects.select_for_update().filter(pk=target, is_active=True).first()
-        current = ExternalLink.objects.filter(user=user).first() if user else None
+        current = ExternalLink.objects.filter(application=client, user=user).first() if user else None
         # Retrying the same pair succeeds even after the access token expired.
-        if current and current.sakura_id == external:
+        if current and current.external_id == external:
             return linked(current)
         # Without a fresh sign-in, do not reveal whether the account is bound.
         if user is None or not authorized_now(user, client):
             return external_result(client, "link", 404, "NOT_FOUND", "账号不存在或未授权", **ids)
-        if current or ExternalLink.objects.filter(sakura_id=external).exists():
+        if current or ExternalLink.objects.filter(application=client, external_id=external).exists():
             return external_result(client, "link", 409, "ALREADY_LINKED", "任意一边已绑定其他账号", **ids)
         try:
             with transaction.atomic():
-                link = ExternalLink.objects.create(user=user, sakura_id=external)
+                link = ExternalLink.objects.create(application=client, user=user, external_id=external)
         except IntegrityError:
-            # Another account bound this Sakura ID concurrently; the user row is locked, so it
+            # Another account bound this external ID concurrently; the user row is locked, so it
             # cannot have been this account.
             return external_result(client, "link", 409, "ALREADY_LINKED", "任意一边已绑定其他账号", **ids)
     return linked(link)

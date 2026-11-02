@@ -6,7 +6,7 @@ from unittest import mock, skipUnless
 from django.contrib.auth.models import Permission
 from django.core.management import call_command
 from django.db import IntegrityError, connection, connections
-from django.test import Client, TestCase, TransactionTestCase, override_settings
+from django.test import Client, TestCase, TransactionTestCase
 from django.utils import timezone
 from oauth2_provider.models import AccessToken, Application
 
@@ -15,7 +15,6 @@ from accounts.models import ApplicationAccess, ExternalAudit, ExternalLink, User
 SAKURA_KEY = "s" * 64
 
 
-@override_settings(SAKURA_CLIENT_ID="sakura-web")
 class ExternalInterfaceTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(
@@ -100,16 +99,31 @@ class ExternalInterfaceTests(TestCase):
         ApplicationAccess.objects.filter(application=self.sakura).update(enabled=False)
         self.assertEnvelope(self.lookup(), 401, "SERVICE_UNAUTHORIZED")
 
-    def test_only_the_configured_sakura_application_with_the_flag_may_call(self):
+    def test_any_application_needs_the_flag(self):
         self.authorize()
         ApplicationAccess.objects.filter(application=self.sakura).update(allow_external_link=False)
         self.assertEnvelope(self.lookup(), 403, "SERVICE_FORBIDDEN")
-        other = self.application("other-web", "o" * 64, allow_external_link=True, allow_profiles=True)
+        other = self.application("other-web", "o" * 64, allow_profiles=True)
         self.authorize(app=other)
         self.assertEnvelope(self.lookup(client_id="other-web", key="o" * 64), 403, "SERVICE_FORBIDDEN")
-        ApplicationAccess.objects.filter(application=self.sakura).update(allow_external_link=True)
-        with override_settings(SAKURA_CLIENT_ID=""):
-            self.assertEnvelope(self.lookup(), 403, "SERVICE_FORBIDDEN")
+        ApplicationAccess.objects.filter(application=other).update(allow_external_link=True)
+        self.assertEnvelope(self.lookup(client_id="other-web", key="o" * 64), 200, "OK")
+
+    def test_bindings_are_kept_per_application(self):
+        other = self.application("other-web", "o" * 64, allow_external_link=True)
+        self.authorize()
+        self.authorize(app=other)
+        self.assertEnvelope(self.link("shared_1"), 200, "OK")
+        other_link = self.call("link", {"id": self.user.pk, "externalId": "shared_1"}, "other-web", "o" * 64)
+        self.assertEnvelope(other_link, 200, "OK")
+        self.assertEqual(
+            set(ExternalLink.objects.values_list("application__client_id", "external_id")),
+            {("sakura-web", "shared_1"), ("other-web", "shared_1")},
+        )
+        # A binding on one application grants nothing to another once its sign-in expires.
+        AccessToken.objects.filter(application=other).delete()
+        ExternalLink.objects.filter(application=other).delete()
+        self.assertEnvelope(self.lookup(client_id="other-web", key="o" * 64), 404, "NOT_FOUND")
         self.assertEnvelope(self.lookup(), 200, "OK")
 
     def test_sakura_cannot_use_other_internal_interfaces(self):
@@ -134,7 +148,7 @@ class ExternalInterfaceTests(TestCase):
         )
 
     def test_lookup_of_a_bound_account_needs_no_token(self):
-        ExternalLink.objects.create(user=self.user, sakura_id="sakura_1")
+        ExternalLink.objects.create(application=self.sakura, user=self.user, external_id="sakura_1")
         self.assertEnvelope(self.lookup(), 200, "OK")
 
     def test_lookup_is_not_found_without_permission(self):
@@ -147,7 +161,7 @@ class ExternalInterfaceTests(TestCase):
         self.assertEnvelope(self.lookup("0" * 32), 404, "NOT_FOUND")
 
     def test_disabled_account_is_not_found_even_when_bound(self):
-        ExternalLink.objects.create(user=self.user, sakura_id="sakura_1")
+        ExternalLink.objects.create(application=self.sakura, user=self.user, external_id="sakura_1")
         User.objects.filter(pk=self.user.pk).update(is_active=False)
         self.assertEnvelope(self.lookup(), 404, "NOT_FOUND")
 
@@ -184,7 +198,7 @@ class ExternalInterfaceTests(TestCase):
         self.authorize()
         data = self.assertEnvelope(self.link(), 200, "OK")
         link = ExternalLink.objects.get()
-        self.assertEqual((link.user_id, link.sakura_id), (self.user.pk, "sakura_1"))
+        self.assertEqual((link.user_id, link.external_id), (self.user.pk, "sakura_1"))
         self.assertEqual(
             data, {"id": self.user.pk, "externalId": "sakura_1", "linkedAt": link.created_at.isoformat()}
         )
@@ -213,7 +227,7 @@ class ExternalInterfaceTests(TestCase):
         self.assertEqual(ExternalLink.objects.count(), 1)
 
     def test_bound_state_is_hidden_from_a_caller_without_a_fresh_sign_in(self):
-        ExternalLink.objects.create(user=self.user, sakura_id="sakura_1")
+        ExternalLink.objects.create(application=self.sakura, user=self.user, external_id="sakura_1")
         self.assertEnvelope(self.link("sakura_2"), 404, "NOT_FOUND")
 
     def test_concurrent_binding_of_the_same_sakura_id_loses_cleanly(self):
@@ -286,13 +300,12 @@ class ExternalInterfaceTests(TestCase):
         self.assertEnvelope(self.lookup(), 200, "OK")
 
     def test_deleting_the_account_removes_its_binding(self):
-        ExternalLink.objects.create(user=self.user, sakura_id="sakura_1")
+        ExternalLink.objects.create(application=self.sakura, user=self.user, external_id="sakura_1")
         self.user.delete()
         self.assertFalse(ExternalLink.objects.exists())
 
 
 @skipUnless(connection.vendor == "postgresql", "needs real row locks")
-@override_settings(SAKURA_CLIENT_ID="sakura-web")
 class ExternalLinkRaceTests(TransactionTestCase):
     def test_two_accounts_racing_for_one_sakura_id(self):
         app = Application.objects.create(
@@ -339,31 +352,37 @@ class ExternalLinkRaceTests(TransactionTestCase):
         for thread in threads:
             thread.join()
         self.assertEqual(sorted(codes), ["ALREADY_LINKED", "OK"])
-        self.assertEqual(ExternalLink.objects.filter(sakura_id="contested").count(), 1)
+        self.assertEqual(ExternalLink.objects.filter(external_id="contested").count(), 1)
 
 
-@override_settings(SAKURA_CLIENT_ID="sakura-web")
 class ExternalAdminTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_superuser(
             username="root", nickname="Root", email="root@example.test", password="Testing!4279"
         )
         self.user = User.objects.create_user(username="player", nickname="Player", password="Testing!4279")
-        self.link = ExternalLink.objects.create(user=self.user, sakura_id="sakura_1")
+        app = Application.objects.create(
+            name="Partner",
+            client_id="partner-web",
+            client_type="confidential",
+            authorization_grant_type="authorization-code",
+            redirect_uris="https://example.test/callback",
+        )
+        self.link = ExternalLink.objects.create(application=app, user=self.user, external_id="sakura_1")
 
     def test_only_a_superuser_can_delete_a_binding_and_nobody_edits_one(self):
         staff = User.objects.create_user(
             username="staff", nickname="Staff", password="Testing!4279", is_staff=True
         )
         staff.user_permissions.set(Permission.objects.filter(codename__endswith="externallink"))
-        url = f"/admin/accounts/externallink/{self.user.pk}/delete/"
+        url = f"/admin/accounts/externallink/{self.link.pk}/delete/"
         self.client.force_login(staff)
         self.assertEqual(self.client.post(url, {"post": "yes"}).status_code, 403)
         self.assertEqual(self.client.get("/admin/accounts/externallink/add/").status_code, 403)
         self.client.force_login(self.admin)
         self.assertEqual(self.client.get("/admin/accounts/externallink/add/").status_code, 403)
         response = self.client.post(url, {"post": "yes"}, follow=True)
-        self.assertContains(response, "请通知 Sakura 删除 Sakura ID sakura_1 的绑定")
+        self.assertContains(response, "请通知 Partner 删除外部账号 sakura_1 的绑定")
         self.assertFalse(ExternalLink.objects.exists())
 
     def application_form(self, client_id, **overrides):
@@ -380,21 +399,19 @@ class ExternalAdminTests(TestCase):
         }
         return self.client.post("/admin/oauth2_provider/application/add/", data)
 
-    def test_the_flag_is_accepted_only_for_the_configured_sakura_web_application(self):
+    def test_the_flag_is_accepted_only_for_confidential_website_applications(self):
         self.client.force_login(self.admin)
-        error = "Sakura 外源接口只能开在"
-        self.assertContains(self.application_form("other-web"), error)
-        self.assertContains(self.application_form("sakura-web", client_type="public"), error)
+        error = "外源账号查询和绑定只能开在"
+        self.assertContains(self.application_form("public-web", client_type="public"), error)
         self.assertContains(
-            self.application_form("sakura-web", authorization_grant_type="client-credentials"), error
+            self.application_form("backend-only", authorization_grant_type="client-credentials"), error
         )
-        with override_settings(SAKURA_CLIENT_ID=""):
-            self.assertContains(self.application_form("sakura-web"), error)
-        self.assertFalse(Application.objects.filter(client_id__in=["other-web", "sakura-web"]).exists())
-        self.assertNotContains(self.application_form("sakura-web"), error)
-        app = Application.objects.get(client_id="sakura-web")
-        self.assertTrue(app.service_access.allow_external_link)
-        self.assertFalse(app.service_access.allow_profiles)
+        self.assertFalse(Application.objects.filter(client_id__in=["public-web", "backend-only"]).exists())
+        for client_id in ("partner-a", "partner-b"):
+            self.assertNotContains(self.application_form(client_id), error)
+            app = Application.objects.get(client_id=client_id)
+            self.assertTrue(app.service_access.allow_external_link)
+            self.assertFalse(app.service_access.allow_profiles)
 
     def test_consent_page_tells_the_user_about_email_and_binding(self):
         app = Application.objects.create(
