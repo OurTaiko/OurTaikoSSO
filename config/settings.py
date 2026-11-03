@@ -93,6 +93,11 @@ STORAGES = {
 # migration 0007. A sign-in expires this many days after its last use.
 GAME_ACCOUNT_CLIENT_ID = "OurTaikoPlay"
 GAME_ACCOUNT_IDLE_DAYS = 30
+# Reverse Sakura/Viewer client is intentionally OFF until both services are ready.
+# Credentials must be issued by Viewer, not copied from OurTaiko's Sakura Application.
+SAKURA_REVERSE_ENABLED = os.getenv("SAKURA_REVERSE_ENABLED", "false").lower() == "true"
+SAKURA_REVERSE_SERVICE_ID = os.getenv("SAKURA_REVERSE_SERVICE_ID", "")
+SAKURA_REVERSE_SERVICE_KEY = os.getenv("SAKURA_REVERSE_SERVICE_KEY", "")
 # cleanup_auth deletes external interface audit rows (/internal/v1/external/*) after this many days.
 EXTERNAL_AUDIT_DAYS = 90
 # cleanup_auth deletes an account whose email was never confirmed and that never signed in
