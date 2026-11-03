@@ -1,6 +1,7 @@
 import secrets
 
 from django import forms
+from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
 from django.core.exceptions import PermissionDenied
@@ -195,10 +196,10 @@ class ClientRoleAdmin(admin.ModelAdmin):
 
 @admin.register(ExternalLink)
 class ExternalLinkAdmin(admin.ModelAdmin):
-    """Bindings are created only by their Application through /internal/v1/external/link.
+    """Superuser-only exact-pair unlink, with remote-first coordination for Sakura.
 
-    Only a superuser may delete (unbind) one, one at a time. No platform offers an unlink
-    interface yet, so deleting here clears only the OurTaiko side; tell the platform to clear theirs.
+    Other Applications remain manual. The Viewer external client must be enabled
+    and configured before automated two-sided deletion is allowed.
     """
 
     list_display = ("application", "user", "external_id", "created_at")
@@ -218,6 +219,24 @@ class ExternalLinkAdmin(admin.ModelAdmin):
         return request.user.is_superuser
 
     def delete_model(self, request, obj):
+        # Only the formal Sakura Application may use the Viewer reverse service.
+        # The existing staging Application and unrelated clients never call it.
+        if getattr(settings, "SAKURA_REVERSE_ENABLED", False) and obj.application.client_id == "Sakura":
+            from .sakura import SakuraServiceError, unlink_viewer
+
+            try:
+                # Viewer ID is this application's external_id; the local user PK
+                # is the OurTaiko 32-hex subject. Never swap the two arguments.
+                unlink_viewer(str(obj.external_id), str(obj.user_id))
+            except SakuraServiceError as error:
+                if error.status != 404 or error.code != "NOT_FOUND":
+                    # Stop before local deletion. Do not claim a two-sided success
+                    # on timeout, 409 or an unreadable/unknown remote response.
+                    raise PermissionDenied("Viewer 端解绑尚未确认，已保留双方当前记录") from None
+            super().delete_model(request, obj)
+            messages.success(request, "已按精确账号对协调 Viewer 端解绑，并删除 OurTaiko 本地绑定。")
+            return
+
         super().delete_model(request, obj)
         messages.warning(
             request, f"已删除 OurTaiko 一侧的绑定。请通知 {obj.application.name} 删除外部账号 {obj.external_id} 的绑定。"
