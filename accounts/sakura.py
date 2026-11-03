@@ -9,7 +9,6 @@ import ipaddress
 import json
 import re
 from datetime import datetime
-from urllib.parse import urlparse
 
 import requests
 from django.conf import settings
