@@ -11,7 +11,6 @@ from django.conf import settings
 from django.contrib.auth import login as django_login
 from django.http import Http404
 from django.shortcuts import redirect, render
-from django.urls import reverse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 
@@ -111,8 +110,15 @@ def sakura_callback(request):
         # and lifetime with the maintained client. We do NOT inspect a raw JWT.
         token = client.authorize_access_token(request)
         claims = token.get("userinfo")
-        if claims is None or not isinstance(claims.get("sub"), str):
-            raise ValueError("OIDC claims unavailable")
+        if not token.get("id_token") or claims is None or not isinstance(claims.get("sub"), str):
+            raise ValueError("Verified ID Token is required")
+        # Second-layer checks after Authlib's JWKS/nonce/issuer/audience
+        # and expiry verification; not a replacement for that verification.
+        audience = claims.get("aud")
+        if claims.get("iss") != VIEWER_ISSUER or not (
+            audience == "OurTaiko" or (isinstance(audience, list) and "OurTaiko" in audience)
+        ):
+            raise ValueError("Unexpected Viewer token audience or issuer")
         user = bound_ourtaiko_user(claims["sub"], application_id="Sakura")
     except ViewerBindingMissing:
         return _notice(
@@ -120,7 +126,7 @@ def sakura_callback(request):
             "此 Viewer 账号尚未与 OurTaiko 正式关联。请先在 Viewer 的个人资料页关联 OurTaiko，再返回登录。",
             status=409,
         )
-    except (ViewerSubjectInvalid, Exception):
+    except Exception:
         # No access token, ID token, auth code or provider error text is logged.
         return _notice(request, "Sakura 授权验证未完成，请重新发起登录。", status=400)
 
