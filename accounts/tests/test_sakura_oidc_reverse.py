@@ -57,7 +57,7 @@ class ViewerOidcMappingTests(TestCase):
     def test_callback_only_logs_into_existing_formal_pair(self):
         ExternalLink.objects.create(application=self.formal,user=self.user,external_id=self.sub)
         stub = mock.Mock()
-        stub.authorize_access_token.return_value={"userinfo":{"sub":self.sub}}
+        stub.authorize_access_token.return_value={"id_token":"synthetic-signed-token-validated-by-library","userinfo":{"sub":self.sub,"iss":"https://viewer.sakura-bot.cn/oidc","aud":"OurTaiko"}}
         with mock.patch("accounts.sakura_oidc_views._client",return_value=stub):
             response=self.client.get("/login/sakura/callback/",{"code":"synthetic","state":"synthetic"})
         self.assertEqual(response.status_code,302)
@@ -68,7 +68,7 @@ class ViewerOidcMappingTests(TestCase):
     @override_settings(SAKURA_REVERSE_OIDC_ENABLED=True)
     def test_unlinked_callback_never_merges_email_or_creates_an_account(self):
         stub=mock.Mock()
-        stub.authorize_access_token.return_value={"userinfo":{"sub":self.sub,"email":self.user.email}}
+        stub.authorize_access_token.return_value={"id_token":"synthetic-signed-token-validated-by-library","userinfo":{"sub":self.sub,"email":self.user.email,"iss":"https://viewer.sakura-bot.cn/oidc","aud":"OurTaiko"}}
         with mock.patch("accounts.sakura_oidc_views._client",return_value=stub):
             response=self.client.get("/login/sakura/callback/",{"code":"synthetic","state":"synthetic"})
         self.assertEqual(response.status_code,409)
