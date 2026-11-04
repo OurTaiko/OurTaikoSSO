@@ -1,4 +1,4 @@
-"""OurTaiko as a Relying Party of the future Viewer OIDC Provider.
+"""OurTaiko as a Relying Party of the Viewer OIDC Provider.
 
 Existing formal pairs only in this initial stage. We deliberately do not
 provision users, merge by email, accept Viewer passwords, or write a second link.
@@ -15,7 +15,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 
 from .sakura_oidc_identity import (
-    ViewerBindingMissing, ViewerSubjectInvalid, bound_ourtaiko_user,
+    ViewerBindingConflict, ViewerBindingMissing, bound_ourtaiko_user,
 )
 
 VIEWER_ISSUER = "https://viewer.sakura-bot.cn/oidc"
@@ -29,16 +29,34 @@ def _client():
         raise Http404
     client_id = getattr(settings, "SAKURA_REVERSE_OIDC_CLIENT_ID", "")
     client_secret = getattr(settings, "SAKURA_REVERSE_OIDC_CLIENT_SECRET", "")
-    if client_id != "OurTaiko" or not isinstance(client_secret, str) or len(client_secret) < 24:
+    if client_id != "OurTaiko" or not isinstance(client_secret, str) or len(client_secret) < 32:
         raise Http404
 
-    # Deferred import: does not affect running OurTaiko until separately enabled.
-    # The dependency and its production lock must be installed before activation.
     from authlib.integrations.django_client import OAuth
+    from authlib.integrations.django_client.apps import DjangoOAuth2App
+    from authlib.integrations.requests_client import OAuth2Session
+
+    class ViewerSession(OAuth2Session):
+        def request(self, method, url, **kwargs):
+            parsed = urlsplit(url)
+            if (parsed.scheme != "https" or parsed.netloc != "viewer.sakura-bot.cn"
+                    or not parsed.path.startswith("/oidc/") or parsed.fragment
+                    or parsed.username or parsed.password):
+                raise ValueError("Untrusted Viewer endpoint")
+            kwargs["timeout"] = (3.05, 10)
+            kwargs["allow_redirects"] = False
+            response = super().request(method, url, **kwargs)
+            if 300 <= response.status_code < 400:
+                raise ValueError("Viewer endpoint redirected")
+            return response
+
+    class ViewerClient(DjangoOAuth2App):
+        client_cls = ViewerSession
 
     oauth = OAuth()
     client = oauth.register(
         name="viewer_oidc",
+        client_cls=ViewerClient,
         client_id=client_id,
         client_secret=client_secret,
         server_metadata_url=VIEWER_DISCOVERY,
@@ -58,12 +76,16 @@ def _client():
         if not isinstance(target, str):
             raise ValueError("Incomplete Viewer OIDC discovery")
         parsed = urlsplit(target)
-        if parsed.scheme != "https" or parsed.netloc != urlsplit(VIEWER_ORIGIN).netloc or parsed.username or parsed.password:
+        if (parsed.scheme != "https" or parsed.netloc != urlsplit(VIEWER_ORIGIN).netloc
+                or not parsed.path.startswith("/oidc/") or parsed.query or parsed.fragment
+                or parsed.username or parsed.password):
             raise ValueError("Untrusted Viewer OIDC endpoint")
     if "S256" not in metadata.get("code_challenge_methods_supported", []):
         raise ValueError("Viewer OIDC requires S256")
     if "RS256" not in metadata.get("id_token_signing_alg_values_supported", []):
         raise ValueError("Viewer OIDC requires RS256")
+    # Authlib uses this allowlist for ID Token JWT algorithm verification.
+    metadata["id_token_signing_alg_values_supported"] = ["RS256"]
     return client
 
 
@@ -106,9 +128,22 @@ def sakura_callback(request):
         return _notice(request, "当前 OurTaiko 登录状态已变化，请退出后重新发起授权。", status=409)
     try:
         client = _client()
+        if request.GET.get("error"):
+            state = request.GET.get("state")
+            if not state or not client.framework.get_state_data(request.session, state):
+                raise ValueError("Missing browser-bound authorization state")
+            client.framework.clear_state_data(request.session, state)
+            if request.GET["error"] == "access_denied":
+                return _notice(request, "你已取消 Viewer 授权，可以重新选择登录方式。", status=400)
+            raise ValueError("Provider rejected authorization")
         # Fully validate state/nonce and ID Token signature, issuer, audience
         # and lifetime with the maintained client. We do NOT inspect a raw JWT.
-        token = client.authorize_access_token(request)
+        token = client.authorize_access_token(request, leeway=30, claims_options={
+            "iss": {"essential": True, "value": VIEWER_ISSUER},
+            "sub": {"essential": True}, "aud": {"essential": True},
+            "exp": {"essential": True}, "iat": {"essential": True},
+            "nonce": {"essential": True},
+        })
         claims = token.get("userinfo")
         if not token.get("id_token") or claims is None or not isinstance(claims.get("sub"), str):
             raise ValueError("Verified ID Token is required")
@@ -120,6 +155,8 @@ def sakura_callback(request):
         ):
             raise ValueError("Unexpected Viewer token audience or issuer")
         user = bound_ourtaiko_user(claims["sub"], application_id="Sakura")
+    except ViewerBindingConflict:
+        return _notice(request, "账号关联存在冲突，请联系 OurTaiko 管理员。", status=409)
     except ViewerBindingMissing:
         return _notice(
             request,

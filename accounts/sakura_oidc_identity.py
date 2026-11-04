@@ -15,6 +15,10 @@ class ViewerSubjectInvalid(ValueError):
     pass
 
 
+class ViewerBindingConflict(LookupError):
+    pass
+
+
 class ViewerBindingMissing(LookupError):
     pass
 
@@ -35,11 +39,16 @@ def bound_ourtaiko_user(viewer_sub, *, application_id="Sakura"):
     must NEVER grant a login in the formal reverse flow.
     """
     sub = verified_viewer_sub(viewer_sub)
-    link = (
-        ExternalLink.objects.select_related("user")
-        .filter(application__client_id=application_id, external_id=sub)
-        .first()
-    )
-    if link is None or not link.user.is_active:
+    if application_id != "Sakura":
+        raise ViewerBindingMissing("Formal Sakura application required")
+    try:
+        link = ExternalLink.objects.select_related("user", "application").get(
+            application__client_id="Sakura", external_id=sub,
+        )
+    except ExternalLink.DoesNotExist:
+        raise ViewerBindingMissing("Viewer account has no formal link") from None
+    except ExternalLink.MultipleObjectsReturned:
+        raise ViewerBindingConflict("Ambiguous formal binding") from None
+    if not link.user.is_active:
         raise ViewerBindingMissing("Viewer account has no active formal link")
     return link.user

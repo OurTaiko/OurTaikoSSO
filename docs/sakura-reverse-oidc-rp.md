@@ -1,6 +1,6 @@
 # OurTaiko 使用 Viewer 授权登录：方案 B 首批候选
 
-状态：**开发分支 / 默认关闭 / 未联调 / 未部署**。Viewer 1.2.4 的 OurTaiko → Viewer 功能保持不变。此候选仅建立对**已经在正式 `Sakura` Application 下完成双端绑定**的 OurTaiko 账号反向登录通路；不创建用户、不根据邮箱合并、不写新的两端关联。
+状态：**开发分支 / 本地隔离链路通过 / 正式未验收 / 未部署**。Viewer 1.2.4 的 OurTaiko → Viewer 功能保持不变。此候选仅建立对**已经在正式 `Sakura` Application 下完成双端绑定**的 OurTaiko 账号反向登录通路；不创建用户、不根据邮箱合并、不写新的两端关联。
 
 ## 为什么不沿用 v0.1 的外源密码接口
 
@@ -14,15 +14,22 @@
 - 登录页在开关关闭时没有新入口，现有登录行为不变。
 - `accounts/tests/test_sakura_oidc_reverse.py`：精确账号、staging 隔离、无账号创建、禁止已有 Session 被替换的定向业务测试；此测试会 Mock RP，不是实际 OIDC 联调证据。
 
-## 尚未完成，不得提前启用
+## 正式启用条件
 
-1. Viewer 方必须先提供新的符合协议的 OIDC Provider：固定 `https://viewer.sakura-bot.cn/oidc` Issuer、Discovery/JWKS、授权/Token/用户资料接口、稳定十进制 `sub`、UI 明确同意、可靠存储、签名密钥及会话撤销验证。**仅有 Viewer 主站 OIDC 客户端不等于它已是 Provider**。
-2. Viewer 签发独立 confidential `OurTaiko` Client ID/Secret（与现有 `Sakura` 的反方向密钥不共用），回调精确登记 `https://sso.ourtaiko.org/login/sakura/callback/`。
-3. 必须通过 `uv lock` 更新 `uv.lock`，再执行 `uv export --frozen --no-dev --no-emit-project --format requirements-txt -o requirements.txt`；本 Draft 仅在 `pyproject.toml` 声明 `authlib>=1.9.2,<1.10`，**生产锁文件尚未更新**，当前不可合并部署。
-4. 验证 Authlib 针对 Viewer 实际 metadata 的 OIDC 验签与 PKCE S256，并确认实际 JWKS、`sub`、cookie 和 OAuth 回调安全；服务端必须为 token/discovery/metadata HTTP 指定有界超时并禁用重定向，确保所有信任端点都来自 Viewer 固定 origin。
-5. 补齐账号未关联时新用户自动注册、已有用户绑定、双端相同账号对持久恢复和 unlink 协调。这些需要在协议 v0.2 上先确认双端 link 后端证据如何由 Viewer 安全验证，不能单靠 ID Token 在 OurTaiko 写关联。
-6. 全部开关保持 OFF，不传输或记录任何真实 Viewer 用户密码，生产数据库、旧 `Sakura` Application、staging 测试身份不修改。
+依赖已锁为 Authlib 1.9.3，包含 `uv.lock` 与带哈希的 `requirements.txt`。实际 Django Client 子类使用受限 OAuth2Session；所有 Discovery/JWKS/Token 网络请求有 3.05 秒连接、10 秒读取超时，拒绝重定向，并固定 Viewer HTTPS `/oidc/` 来源。ID Token 算法允许列表只有 RS256，验证必需 iss/sub/aud/exp/iat/nonce；Authlib 负责 state、PKCE、nonce、签名和时效，时间容差 30 秒。
+
+正式 Viewer Provider 必须先发布。双方还需经私有渠道配置独立 confidential `OurTaiko` Client Secret（不能复用正向 `Sakura` 密钥）；Viewer 端提供 OP 私有签名 JWKS 和持久 Cookie keys。RP 私有环境为 `SAKURA_REVERSE_OIDC_CLIENT_ID=OurTaiko`、`SAKURA_REVERSE_OIDC_CLIENT_SECRET`，正式发布后才设置 `SAKURA_REVERSE_OIDC_ENABLED=true`。
+
+本地隔离浏览器验证不能替代正式浏览器验收；未取得生产 Discovery、JWKS、原正式绑定账号登录和重复登录证据时，PR 保持 Draft。本批不要求新用户自动注册或新的绑定协议，不把它们当成本批阻塞。
 
 ## 最短验收口径
 
 对已有正式精确绑定的用户，点击 OurTaiko「使用 Sakura Viewer 登录」→ 浏览器跳到 Viewer 用户登录/授权 → 回调 OurTaiko → 返回原 OurTaiko 用户、既有绑定行数不变。一次故意错误 sub、不匹配应用、失效 Session/撤销授权均拒绝。只做与这条核心链路有关的定向验证，不增加全套 CI 或灰度阶段。
+
+## 2026-11-04 验证结果
+
+真实 Chromium 在两个固定 HTTPS origin 间跳转，使用 Viewer 新建隔离 MySQL 与 OurTaiko 新建隔离 SQLite；真实 Provider 生成授权码、Token 和 JWKS，Authlib 实际验证 RS256、issuer/audience、nonce、state、时效和 PKCE。原绑定账号两次登录成功，User/ExternalLink 各 1 行，账号对与密码/权限字段不变。未绑定同邮箱、取消、回调/授权码重放、CSRF、Viewer 会话切换、同意前及发码后撤销均通过定向检查；本仓库 6 个既有映射测试通过。
+
+可复现入口是 Viewer PR #51 的 `taiko_viewer/scripts/verify_reverse_oidc_wire.mjs`，本仓库配套 `accounts/tests/sakura_wire_server.py` 只供隔离测试。测试没有真实生产账号、没有复制生产数据，公网证书和正式密钥交换仍需正式启用时验证。用户已确认正式反向凭据/签名配置尚未准备；当前不合并、不部署、不启用。
+
+Viewer Nuxt 打包产物也通过相同浏览器链路与全部拒绝分支；公开生产检查确认原正向 `ourtaiko` registry 和 OurTaiko Discovery 正常，新 Viewer 反向 Discovery 仍为 404。
