@@ -4,7 +4,7 @@ from django.contrib.auth.views import LogoutView
 from django.urls import include, path
 from oauth2_provider import views as oauth_views
 
-from accounts import api, game_accounts, views
+from accounts import api, game_accounts, views, sakura_oidc_views
 
 oauth_patterns = [
     path("authorize/", oauth_views.AuthorizationView.as_view(), name="authorize"),
@@ -20,6 +20,8 @@ oauth_patterns = [
 ]
 urlpatterns = [
     path("", views.overview, name="overview"),
+    path("login/sakura/", sakura_oidc_views.start_sakura_login, name="sakura-oidc-start"),
+    path("login/sakura/callback/", sakura_oidc_views.sakura_callback, name="sakura-oidc-callback"),
     path("login/", views.AccountLoginView.as_view(), name="login"),
     path("logout/", LogoutView.as_view(), name="logout"),
     path("register/", views.register, name="register"),
