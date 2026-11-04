@@ -12,6 +12,7 @@ dependencies = [
   "bcrypt>=4,<6",
   "cryptography>=46",
   "requests>=2.32,<3",
+  "authlib>=1.9.2,<1.10",
   "jwcrypto>=1.5,<2",
   "gunicorn>=23,<24",
   "whitenoise>=6.9,<7",
