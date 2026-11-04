@@ -93,6 +93,11 @@ STORAGES = {
 # migration 0007. A sign-in expires this many days after its last use.
 GAME_ACCOUNT_CLIENT_ID = "OurTaikoPlay"
 GAME_ACCOUNT_IDLE_DAYS = 30
+# Reverse browser-based OIDC: Viewer authenticates its own users. Disabled
+# until Viewer publishes a stable OP and issues a distinct confidential RP key.
+SAKURA_REVERSE_OIDC_ENABLED = os.getenv("SAKURA_REVERSE_OIDC_ENABLED", "false").lower() == "true"
+SAKURA_REVERSE_OIDC_CLIENT_ID = os.getenv("SAKURA_REVERSE_OIDC_CLIENT_ID", "")
+SAKURA_REVERSE_OIDC_CLIENT_SECRET = os.getenv("SAKURA_REVERSE_OIDC_CLIENT_SECRET", "")
 # cleanup_auth deletes external interface audit rows (/internal/v1/external/*) after this many days.
 EXTERNAL_AUDIT_DAYS = 90
 # cleanup_auth deletes an account whose email was never confirmed and that never signed in
