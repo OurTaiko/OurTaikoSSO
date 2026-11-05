@@ -296,7 +296,14 @@ def authorized_now(user, client):
 @service_endpoint("allow_external_link", external=True)
 def external_lookup(request, client, body):
     target = body.get("id")
-    if set(body) != {"id"} or not isinstance(target, str) or not OURTAIKO_ID.fullmatch(target):
+    # withExternalId is opt-in so that the answer stays byte-for-byte the same for older clients.
+    with_external = body.get("withExternalId") is True
+    if (
+        set(body) - {"withExternalId"} != {"id"}
+        or ("withExternalId" in body and not with_external)
+        or not isinstance(target, str)
+        or not OURTAIKO_ID.fullmatch(target)
+    ):
         return external_result(client, "lookup", 400, "REQUEST_INVALID", "需要 32 位小写十六进制的 id")
     app_ok = allow_attempt(f"external-lookup-app:{client.pk}", 600)
     id_ok = allow_attempt(f"external-lookup-id:{client.pk}:{target}", 60)
@@ -304,12 +311,14 @@ def external_lookup(request, client, body):
         return external_result(client, "lookup", 429, "RATE_LIMITED", "查询过于频繁", target=target)
     user = User.objects.filter(pk=target, is_active=True).first()
     # Absent, disabled and not yours to see are deliberately the same answer.
-    bound = user is not None and ExternalLink.objects.filter(application=client, user=user).exists()
-    if user is None or not (bound or authorized_now(user, client)):
+    link = ExternalLink.objects.filter(application=client, user=user).first() if user else None
+    if user is None or not (link or authorized_now(user, client)):
         return external_result(client, "lookup", 404, "NOT_FOUND", "账号不存在或无权查看", target=target)
     if not user.email_verified or not user.email:
         return external_result(client, "lookup", 409, "EMAIL_UNVERIFIED", "账号邮箱未验证", target=target)
     data = {"id": user.pk, "nickname": user.nickname, "email": user.email, "emailVerified": True}
+    if with_external:
+        data["externalId"] = link.external_id if link else None
     return external_result(client, "lookup", 200, "OK", data=data, target=target)
 
 

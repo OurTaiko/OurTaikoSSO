@@ -98,6 +98,8 @@ GAME_ACCOUNT_IDLE_DAYS = 30
 SAKURA_REVERSE_OIDC_ENABLED = os.getenv("SAKURA_REVERSE_OIDC_ENABLED", "false").lower() == "true"
 SAKURA_REVERSE_OIDC_CLIENT_ID = os.getenv("SAKURA_REVERSE_OIDC_CLIENT_ID", "")
 SAKURA_REVERSE_OIDC_CLIENT_SECRET = os.getenv("SAKURA_REVERSE_OIDC_CLIENT_SECRET", "")
+# A Viewer account with no OurTaiko pair may create a new ordinary account on first sign-in.
+SAKURA_REVERSE_SIGNUP_ENABLED = os.getenv("SAKURA_REVERSE_SIGNUP_ENABLED", "false").lower() == "true"
 # cleanup_auth deletes external interface audit rows (/internal/v1/external/*) after this many days.
 EXTERNAL_AUDIT_DAYS = 90
 # cleanup_auth deletes an account whose email was never confirmed and that never signed in

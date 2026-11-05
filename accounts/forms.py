@@ -46,6 +46,19 @@ class RegistrationForm(UserCreationForm):
         return user
 
 
+class PartnerSignupForm(forms.ModelForm):
+    """The two choices a person makes when a partner platform sign-in creates their account."""
+
+    class Meta:
+        model = User
+        fields = ["username", "nickname"]
+        labels = RegistrationForm.Meta.labels
+        help_texts = RegistrationForm.Meta.help_texts
+
+    def clean_nickname(self):
+        return self.cleaned_data["nickname"].strip()
+
+
 class ProfileForm(forms.ModelForm):
     class Meta:
         model = User
@@ -88,7 +101,10 @@ class EmailForm(forms.Form):
 
 class VerifiedPasswordResetForm(PasswordResetForm):
     def get_users(self, email):
-        return (user for user in super().get_users(email) if user.email_verified)
+        # Unlike Django's default, accounts without a password (created by signing in through a
+        # partner platform) may set one here: the verified mailbox is the proof.
+        users = User.objects.filter(email__iexact=email, is_active=True, email_verified=True)
+        return (user for user in users if user.email.casefold() == email.casefold())
 
     def send_mail(self, subject_template_name, email_template_name, context, *args, **kwargs):
         # Background/email rendering follows the recipient, not the requesting browser.

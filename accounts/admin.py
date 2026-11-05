@@ -195,17 +195,18 @@ class ClientRoleAdmin(admin.ModelAdmin):
 
 @admin.register(ExternalLink)
 class ExternalLinkAdmin(admin.ModelAdmin):
-    """Bindings are created only by their Application through /internal/v1/external/link.
+    """Bindings are created by their Application through /internal/v1/external/link, or for Sakura
+    by a first sign-in through Viewer that creates the account.
 
     Only a superuser may delete (unbind) one, one at a time. No platform offers an unlink
     interface yet, so deleting here clears only the OurTaiko side; tell the platform to clear theirs.
     """
 
-    list_display = ("application", "user", "external_id", "created_at")
+    list_display = ("application", "user", "external_id", "origin", "created_at")
     list_select_related = ("application", "user")
-    list_filter = ("application",)
+    list_filter = ("application", "origin")
     search_fields = ("user__username", "user__id", "external_id")
-    readonly_fields = ("application", "user", "external_id", "created_at")
+    readonly_fields = ("application", "user", "external_id", "origin", "created_at")
     actions = None
 
     def has_add_permission(self, request):

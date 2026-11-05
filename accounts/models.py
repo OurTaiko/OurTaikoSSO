@@ -160,8 +160,16 @@ class ExternalLink(models.Model):
         related_name="external_links",
         verbose_name="Application",
     )
+    class Origin(models.TextChoices):
+        PARTNER_LINK = "partner_link", "对方平台调用绑定接口"
+        SIGNUP = "signup", "用对方平台账号首次登录时建号"
+        USER_LINK = "user_link", "用户登录后主动关联"
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="external_links")
     external_id = models.CharField(max_length=64, verbose_name="外部账号 ID")
+    origin = models.CharField(
+        max_length=16, choices=Origin.choices, default=Origin.PARTNER_LINK, verbose_name="来源"
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="绑定时间")
 
     class Meta:

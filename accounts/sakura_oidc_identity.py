@@ -23,6 +23,10 @@ class ViewerBindingMissing(LookupError):
     pass
 
 
+class ViewerAccountDisabled(LookupError):
+    pass
+
+
 def verified_viewer_sub(value):
     """Return the canonical decimal Viewer account ID, never through float."""
     if not isinstance(value, str) or _VIEWER_SUB.fullmatch(value) is None:
@@ -50,5 +54,6 @@ def bound_ourtaiko_user(viewer_sub, *, application_id="Sakura"):
     except ExternalLink.MultipleObjectsReturned:
         raise ViewerBindingConflict("Ambiguous formal binding") from None
     if not link.user.is_active:
-        raise ViewerBindingMissing("Viewer account has no active formal link")
+        # The pair still exists, so the Viewer account must not be given a second OurTaiko one.
+        raise ViewerAccountDisabled("Viewer account is linked to a disabled account")
     return link.user

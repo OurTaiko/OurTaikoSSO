@@ -5,23 +5,38 @@ provision users, merge by email, accept Viewer passwords, or write a second link
 The Authlib Django client owns state, nonce, PKCE and ID Token verification.
 Feature is DISABLED unless privately configured.
 """
+import time
 from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.contrib.auth import login as django_login
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+from django.db import IntegrityError, transaction
 from django.http import Http404
 from django.shortcuts import redirect, render
+from django.utils.translation import gettext as _
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_http_methods
+from oauth2_provider.models import Application
 
+from .forms import PartnerSignupForm
+from .models import ExternalLink, User, validate_nickname
 from .sakura_oidc_identity import (
-    ViewerBindingConflict, ViewerBindingMissing, bound_ourtaiko_user,
+    ViewerAccountDisabled,
+    ViewerBindingConflict,
+    ViewerBindingMissing,
+    bound_ourtaiko_user,
 )
+from .security import allow_attempt
 
 VIEWER_ISSUER = "https://viewer.sakura-bot.cn/oidc"
 VIEWER_DISCOVERY = VIEWER_ISSUER + "/.well-known/openid-configuration"
 VIEWER_ORIGIN = "https://viewer.sakura-bot.cn"
 CALLBACK = "https://sso.ourtaiko.org/login/sakura/callback/"
+# A verified Viewer identity waiting for the person to finish the sign-up page.
+SIGNUP_SESSION_KEY = "sakura_signup"
+SIGNUP_SECONDS = 600
 
 
 def _client():
@@ -157,7 +172,11 @@ def sakura_callback(request):
         user = bound_ourtaiko_user(claims["sub"], application_id="Sakura")
     except ViewerBindingConflict:
         return _notice(request, "账号关联存在冲突，请联系 OurTaiko 管理员。", status=409)
+    except ViewerAccountDisabled:
+        return _notice(request, "账号不可用。", status=403)
     except ViewerBindingMissing:
+        if settings.SAKURA_REVERSE_SIGNUP_ENABLED:
+            return _begin_signup(request, claims)
         return _notice(
             request,
             "此 Viewer 账号尚未与 OurTaiko 正式关联。请先在 Viewer 的个人资料页关联 OurTaiko，再返回登录。",
@@ -170,5 +189,109 @@ def sakura_callback(request):
     if not user.is_active:
         return _notice(request, "账号不可用。", status=403)
     # Existing, confirmed mapping only. No auto-provisioning or email merge.
+    django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    return redirect("overview")
+
+
+def _begin_signup(request, claims):
+    """A Viewer account with no OurTaiko pair may create one (account policy §3.1).
+
+    Nothing is written yet: the verified identity waits in the session for the sign-up page.
+    """
+    # Viewer already pairs this account with an OurTaiko one; that claim only ever blocks.
+    if "ourtaiko_sub" in claims:
+        return _notice(
+            request,
+            _("这个 Viewer 账号已经关联了一个 OurTaiko 账号。请先用 OurTaiko 登录名和密码登录，再完成关联。"),
+            status=409,
+        )
+    email = claims.get("email")
+    if claims.get("email_verified") is not True or not isinstance(email, str) or not email.strip():
+        return _notice(
+            request, _("你的 Viewer 邮箱还没有验证。请先在 Viewer 完成邮箱验证，再回来登录。"), status=409
+        )
+    email = email.strip().lower()
+    try:
+        validate_email(email)
+        if len(email) > 254:
+            raise ValidationError("too long")
+    except ValidationError:
+        return _notice(request, "Sakura 授权验证未完成，请重新发起登录。", status=400)
+    if User.objects.filter(email__iexact=email).exists():
+        return _notice(
+            request,
+            _("这个邮箱已经有 OurTaiko 账号。请先登录原账号，再关联 Sakura Viewer。"),
+            status=409,
+        )
+    nickname = claims.get("name") or claims.get("preferred_username") or ""
+    nickname = nickname.strip()[:40] if isinstance(nickname, str) else ""
+    try:
+        validate_nickname(nickname)
+    except ValidationError:
+        nickname = ""
+    request.session[SIGNUP_SESSION_KEY] = {
+        "sub": claims["sub"],
+        "email": email,
+        "nickname": nickname,
+        "expires": int(time.time()) + SIGNUP_SECONDS,
+    }
+    return redirect("sakura-oidc-signup")
+
+
+@never_cache
+@require_http_methods(["GET", "POST"])
+def sakura_signup(request):
+    if not (settings.SAKURA_REVERSE_OIDC_ENABLED and settings.SAKURA_REVERSE_SIGNUP_ENABLED):
+        raise Http404
+    if request.user.is_authenticated:
+        return redirect("profile")
+    pending = request.session.get(SIGNUP_SESSION_KEY)
+    if not pending or pending.get("expires", 0) < time.time():
+        request.session.pop(SIGNUP_SESSION_KEY, None)
+        return _notice(request, _("注册已超时，请重新使用 Sakura Viewer 登录。"))
+    form = PartnerSignupForm(request.POST or None, initial={"nickname": pending["nickname"]})
+    if request.method == "POST":
+        if not allow_attempt("signup:" + request.META.get("REMOTE_ADDR", ""), 8, 3600):
+            form.add_error(None, _("注册次数过多，请一小时后再试。"))
+        elif form.is_valid():
+            return _create_signup(request, form, pending)
+    response = render(request, "accounts/sakura_signup.html", {"form": form, "email": pending["email"]})
+    response["Referrer-Policy"] = "no-referrer"
+    return response
+
+
+def _create_signup(request, form, pending):
+    """Create the account and its pair in one transaction; re-check what may have changed."""
+    try:
+        with transaction.atomic():
+            application = Application.objects.get(client_id="Sakura")
+            if ExternalLink.objects.filter(application=application, external_id=pending["sub"]).exists():
+                request.session.pop(SIGNUP_SESSION_KEY, None)
+                return _notice(request, _("这个 Viewer 账号已经关联了 OurTaiko 账号，请重新使用 Sakura Viewer 登录。"), status=409)
+            if User.objects.filter(email__iexact=pending["email"]).exists():
+                request.session.pop(SIGNUP_SESSION_KEY, None)
+                return _notice(
+                    request,
+                    _("这个邮箱已经有 OurTaiko 账号。请先登录原账号，再关联 Sakura Viewer。"),
+                    status=409,
+                )
+            user = form.save(commit=False)
+            user.email = pending["email"]
+            user.email_verified = True
+            user.preferred_language = request.LANGUAGE_CODE
+            user.set_unusable_password()
+            user.save()
+            ExternalLink.objects.create(
+                application=application,
+                user=user,
+                external_id=pending["sub"],
+                origin=ExternalLink.Origin.SIGNUP,
+            )
+    except Application.DoesNotExist:
+        return _notice(request, "Viewer 授权服务暂不可用，请稍后重试。", status=503)
+    except IntegrityError:
+        form.add_error(None, _("登录名或邮箱已被使用。"))
+        return render(request, "accounts/sakura_signup.html", {"form": form, "email": pending["email"]})
+    request.session.pop(SIGNUP_SESSION_KEY, None)
     django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     return redirect("overview")

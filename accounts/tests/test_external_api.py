@@ -147,6 +147,19 @@ class ExternalInterfaceTests(TestCase):
             {"id": self.user.pk, "nickname": "玩家", "email": "player@example.test", "emailVerified": True},
         )
 
+    def test_lookup_names_the_bound_external_id_only_when_asked(self):
+        self.authorize()
+        body = {"id": self.user.pk, "withExternalId": True}
+        self.assertIsNone(self.assertEnvelope(self.call("lookup", body), 200, "OK")["externalId"])
+        ExternalLink.objects.create(application=self.sakura, user=self.user, external_id="sakura_1")
+        self.assertEqual(self.assertEnvelope(self.call("lookup", body), 200, "OK")["externalId"], "sakura_1")
+        self.assertNotIn("externalId", self.assertEnvelope(self.lookup(), 200, "OK"))
+        # Another application's binding is not this caller's to see.
+        other = self.application("other-web", "o" * 64, allow_external_link=True)
+        self.authorize(app=other)
+        data = self.assertEnvelope(self.call("lookup", body, client_id="other-web", key="o" * 64), 200, "OK")
+        self.assertIsNone(data["externalId"])
+
     def test_lookup_of_a_bound_account_needs_no_token(self):
         ExternalLink.objects.create(application=self.sakura, user=self.user, external_id="sakura_1")
         self.assertEnvelope(self.lookup(), 200, "OK")
@@ -179,6 +192,9 @@ class ExternalInterfaceTests(TestCase):
             {"id": "abc"},
             {"id": 1},
             {"id": self.user.pk, "x": 1},
+            {"id": self.user.pk, "withExternalId": False},
+            {"id": self.user.pk, "withExternalId": "true"},
+            {"withExternalId": True},
             {},
         ):
             self.assertEnvelope(self.call("lookup", body), 400, "REQUEST_INVALID")
@@ -199,6 +215,7 @@ class ExternalInterfaceTests(TestCase):
         data = self.assertEnvelope(self.link(), 200, "OK")
         link = ExternalLink.objects.get()
         self.assertEqual((link.user_id, link.external_id), (self.user.pk, "sakura_1"))
+        self.assertEqual(link.origin, ExternalLink.Origin.PARTNER_LINK)
         self.assertEqual(
             data, {"id": self.user.pk, "externalId": "sakura_1", "linkedAt": link.created_at.isoformat()}
         )
