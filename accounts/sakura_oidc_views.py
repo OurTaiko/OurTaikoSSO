@@ -255,9 +255,9 @@ def sakura_signup(request):
             form.add_error(None, _("注册次数过多，请一小时后再试。"))
         elif form.is_valid():
             return _create_signup(request, form, pending)
-    response = render(request, "accounts/sakura_signup.html", {"form": form, "email": pending["email"]})
-    response["Referrer-Policy"] = "no-referrer"
-    return response
+    # Keep the site's same-origin Referrer-Policy: under no-referrer browsers post this form with
+    # "Origin: null", which the CSRF check rejects.
+    return render(request, "accounts/sakura_signup.html", {"form": form, "email": pending["email"]})
 
 
 def _create_signup(request, form, pending):

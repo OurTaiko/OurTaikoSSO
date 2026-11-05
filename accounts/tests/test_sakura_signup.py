@@ -52,6 +52,8 @@ class SakuraSignupTests(TestCase):
         self.assertEqual(User.objects.count(), 0)
         page = self.client.get("/login/sakura/signup/")
         self.assertContains(page, "viewer.player@example.test")
+        # Under no-referrer the browser would post the form with "Origin: null" and fail CSRF.
+        self.assertNotEqual(page["Referrer-Policy"], "no-referrer")
         self.assertContains(page, 'value="Viewer 玩家"')
 
         self.assertRedirects(self.sign_up(), "/", fetch_redirect_response=False)
