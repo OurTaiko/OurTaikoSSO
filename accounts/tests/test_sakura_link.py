@@ -151,3 +151,11 @@ class SakuraLinkTests(TestCase):
         csrf.force_login(self.user)
         self.assertEqual(csrf.post("/link/sakura/").status_code, 403)
         self.assertContains(self.client.get("/connections/"), 'action="/link/sakura/"')
+
+    def test_connections_csp_allows_viewer_form_redirect(self):
+        policy = self.client.get("/connections/")["Content-Security-Policy"]
+        self.assertTrue(policy.endswith("form-action 'self' https://viewer.sakura-bot.cn"))
+        self.assertTrue(self.client.get("/profile/")["Content-Security-Policy"].endswith("form-action 'self'"))
+        with override_settings(SAKURA_REVERSE_LINK_ENABLED=False):
+            policy = self.client.get("/connections/")["Content-Security-Policy"]
+        self.assertTrue(policy.endswith("form-action 'self'"))

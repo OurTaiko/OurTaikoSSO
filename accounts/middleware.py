@@ -50,6 +50,14 @@ class ResponsePolicyMiddleware:
                 parsed = urlsplit(redirect)
                 if parsed.scheme in {"http", "https"} and parsed.netloc and not parsed.username:
                     form_action += " " + parsed.scheme + "://" + parsed.netloc
+        # The account page's "link Sakura Viewer" form POSTs to /link/sakura/, which 302s to Viewer.
+        match = getattr(request, "resolver_match", None)
+        if (match and match.url_name == "connections"
+                and settings.SAKURA_REVERSE_OIDC_ENABLED and settings.SAKURA_REVERSE_LINK_ENABLED):
+            from .sakura_oidc_views import VIEWER_ISSUER
+
+            viewer = urlsplit(VIEWER_ISSUER)
+            form_action += " " + viewer.scheme + "://" + viewer.netloc
         if not getattr(response, "public_cache", False):
             response["Cache-Control"] = "no-store"
         image_sources = "'self' data:"
