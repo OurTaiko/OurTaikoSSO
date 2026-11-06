@@ -3,23 +3,23 @@
 Authlib owns state, nonce, PKCE and ID Token verification. Cross-platform hints
 never grant a local login; existing accounts require independent control proof.
 """
-import time
 import re
-from urllib.parse import urlsplit, parse_qs
+import time
+from urllib.parse import parse_qs, urlsplit
 
 from django.conf import settings
-from django.contrib.auth import login as django_login
 from django.contrib import messages
+from django.contrib.auth import login as django_login
 from django.contrib.auth.decorators import login_required
 from django.contrib.sessions.models import Session
-from django.db.models import Q
-from django.utils import timezone
-from django.utils.crypto import constant_time_compare
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import redirect, render
+from django.utils import timezone
+from django.utils.crypto import constant_time_compare
 from django.utils.translation import gettext as _
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
@@ -31,7 +31,8 @@ from .sakura_oidc_identity import (
     ViewerAccountDisabled,
     ViewerBindingConflict,
     ViewerBindingMissing,
-    bound_ourtaiko_user, verified_viewer_sub,
+    bound_ourtaiko_user,
+    verified_viewer_sub,
 )
 from .security import allow_attempt
 
@@ -162,6 +163,10 @@ def sakura_callback(request):
                 raise ValueError("Missing browser-bound authorization state")
             client.framework.clear_state_data(request.session, state)
             if request.GET["error"] == "access_denied":
+                if link_intent:
+                    # Still signed in to OurTaiko; nothing changed, so go back to where linking began.
+                    messages.info(request, _("你已取消 Viewer 授权，关联状态没有变化。"))
+                    return redirect("connections")
                 return _notice(request, "你已取消 Viewer 授权，可以重新选择登录方式。", status=400)
             raise ValueError("Provider rejected authorization")
         # Fully validate state/nonce and ID Token signature, issuer, audience
