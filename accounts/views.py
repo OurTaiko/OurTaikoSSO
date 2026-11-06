@@ -401,7 +401,7 @@ def connections(request):
     return render(
         request,
         "accounts/connections.html",
-        {"active": "connections", "apps": apps, "game_apps": games, "linked_app_ids": linked},
+        {"active": "connections", "apps": apps, "game_apps": games, "linked_app_ids": linked, "sakura_link_enabled": settings.SAKURA_REVERSE_OIDC_ENABLED and settings.SAKURA_REVERSE_LINK_ENABLED, "sakura_linked": ExternalLink.objects.filter(user=request.user, application__client_id="Sakura").exists()},
     )
 
 
