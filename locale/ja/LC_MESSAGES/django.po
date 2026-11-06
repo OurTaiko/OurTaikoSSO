@@ -880,3 +880,33 @@ msgstr "現在接続できません"
 #: templates/oauth2_provider/authorize.html:2
 msgid "返回账号中心"
 msgstr "アカウントセンターに戻る"
+
+msgid "账号关联存在冲突，请使用原账号或联系支持。"
+msgstr "連携先が一致しません。元のアカウントを使用するか、サポートにお問い合わせください。"
+
+msgid "登录状态已变化，请重新登录后发起关联。"
+msgstr "ログイン状態が変わりました。再度ログインして連携を開始してください。"
+
+msgid "Sakura Viewer 关联已确认。"
+msgstr "Sakura Viewer の連携を確認しました。"
+
+msgid "Sakura Viewer 已关联"
+msgstr "Sakura Viewer 連携済み"
+
+msgid "Sakura Viewer 尚未关联"
+msgstr "Sakura Viewer 未連携"
+
+msgid "重新授权并确认关联"
+msgstr "再認証して連携を確認"
+
+msgid "关联 Sakura Viewer"
+msgstr "Sakura Viewer を連携"
+
+msgid "登录原账号并确认关联"
+msgstr "元のアカウントにログインして確認"
+
+msgid "操作过于频繁，请稍后重试。"
+msgstr "操作が多すぎます。しばらくしてからお試しください。"
+
+msgid "Viewer 授权服务暂不可用，请稍后重试。"
+msgstr "Viewer 認証を利用できません。しばらくしてからお試しください。"

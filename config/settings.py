@@ -203,3 +203,6 @@ if DEBUG:
 
 # Explicitly identify the stock OAuth application for migration dependencies.
 OAUTH2_PROVIDER_APPLICATION_MODEL = "oauth2_provider.Application"
+
+# Phase 2: enable only after coordinated acceptance; no unlink capability.
+SAKURA_REVERSE_LINK_ENABLED = os.getenv("SAKURA_REVERSE_LINK_ENABLED", "false").lower() == "true"

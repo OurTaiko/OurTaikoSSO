@@ -881,3 +881,33 @@ msgstr "Unable to connect right now"
 #: templates/oauth2_provider/authorize.html:2
 msgid "返回账号中心"
 msgstr "Back to account center"
+
+msgid "账号关联存在冲突，请使用原账号或联系支持。"
+msgstr "Account links conflict. Use the original account or contact support."
+
+msgid "登录状态已变化，请重新登录后发起关联。"
+msgstr "Your session changed. Sign in again to start linking."
+
+msgid "Sakura Viewer 关联已确认。"
+msgstr "Sakura Viewer link confirmed."
+
+msgid "Sakura Viewer 已关联"
+msgstr "Sakura Viewer linked"
+
+msgid "Sakura Viewer 尚未关联"
+msgstr "Sakura Viewer not linked"
+
+msgid "重新授权并确认关联"
+msgstr "Authorize again and confirm link"
+
+msgid "关联 Sakura Viewer"
+msgstr "Link Sakura Viewer"
+
+msgid "登录原账号并确认关联"
+msgstr "Sign in to the original account to confirm"
+
+msgid "操作过于频繁，请稍后重试。"
+msgstr "Too many attempts. Please try again later."
+
+msgid "Viewer 授权服务暂不可用，请稍后重试。"
+msgstr "Viewer authorization is unavailable. Please try again later."

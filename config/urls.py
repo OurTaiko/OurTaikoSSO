@@ -22,6 +22,7 @@ urlpatterns = [
     path("", views.overview, name="overview"),
     path("login/sakura/", sakura_oidc_views.start_sakura_login, name="sakura-oidc-start"),
     path("login/sakura/callback/", sakura_oidc_views.sakura_callback, name="sakura-oidc-callback"),
+    path("link/sakura/", sakura_oidc_views.start_sakura_link, name="sakura-oidc-link"),
     path("login/sakura/signup/", sakura_oidc_views.sakura_signup, name="sakura-oidc-signup"),
     path("login/", views.AccountLoginView.as_view(), name="login"),
     path("logout/", LogoutView.as_view(), name="logout"),

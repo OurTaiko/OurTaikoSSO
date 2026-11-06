@@ -1,15 +1,20 @@
-"""OurTaiko as a Relying Party of the Viewer OIDC Provider.
+"""Viewer RP: verified login, opt-in signup and session-bound account linking.
 
-Existing formal pairs only in this initial stage. We deliberately do not
-provision users, merge by email, accept Viewer passwords, or write a second link.
-The Authlib Django client owns state, nonce, PKCE and ID Token verification.
-Feature is DISABLED unless privately configured.
+Authlib owns state, nonce, PKCE and ID Token verification. Cross-platform hints
+never grant a local login; existing accounts require independent control proof.
 """
 import time
-from urllib.parse import urlsplit
+import re
+from urllib.parse import urlsplit, parse_qs
 
 from django.conf import settings
 from django.contrib.auth import login as django_login
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.contrib.sessions.models import Session
+from django.db.models import Q
+from django.utils import timezone
+from django.utils.crypto import constant_time_compare
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
@@ -17,7 +22,7 @@ from django.http import Http404
 from django.shortcuts import redirect, render
 from django.utils.translation import gettext as _
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_GET, require_http_methods
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from oauth2_provider.models import Application
 
 from .forms import PartnerSignupForm
@@ -26,7 +31,7 @@ from .sakura_oidc_identity import (
     ViewerAccountDisabled,
     ViewerBindingConflict,
     ViewerBindingMissing,
-    bound_ourtaiko_user,
+    bound_ourtaiko_user, verified_viewer_sub,
 )
 from .security import allow_attempt
 
@@ -37,6 +42,8 @@ CALLBACK = "https://sso.ourtaiko.org/login/sakura/callback/"
 # A verified Viewer identity waiting for the person to finish the sign-up page.
 SIGNUP_SESSION_KEY = "sakura_signup"
 SIGNUP_SECONDS = 600
+LINK_SESSION_KEY = "sakura_link"
+RECOVERY_SESSION_KEY = "sakura_recovery"
 
 
 def _client():
@@ -104,10 +111,11 @@ def _client():
     return client
 
 
-def _notice(request, text, *, status=400):
+def _notice(request, text, *, status=400, confirm=False):
     response = render(request, "accounts/notice.html", {
         "title": "Sakura 授权登录",
         "text": text,
+        "confirm": confirm,
     }, status=status)
     response["Cache-Control"] = "no-store"
     response["Referrer-Policy"] = "no-referrer"
@@ -121,7 +129,7 @@ def start_sakura_login(request):
         raise Http404
     if request.user.is_authenticated:
         # Do not replace an existing OurTaiko session or silently bind identities.
-        return redirect("profile")
+        return redirect("connections" if settings.SAKURA_REVERSE_LINK_ENABLED else "profile")
     try:
         client = _client()
         # Authlib stores the browser-bound state, nonce, and PKCE verifier in
@@ -139,7 +147,12 @@ def start_sakura_login(request):
 def sakura_callback(request):
     if not getattr(settings, "SAKURA_REVERSE_OIDC_ENABLED", False):
         raise Http404
-    if request.user.is_authenticated:
+    state = request.GET.get("state", "")
+    link_intent = request.session.pop(LINK_SESSION_KEY + ":" + state, None)
+    if link_intent:
+        if not settings.SAKURA_REVERSE_LINK_ENABLED or not _same_link_session(request, link_intent):
+            return _notice(request, _("登录状态已变化，请重新登录后发起关联。"), status=409)
+    elif request.user.is_authenticated:
         return _notice(request, "当前 OurTaiko 登录状态已变化，请退出后重新发起授权。", status=409)
     try:
         client = _client()
@@ -169,13 +182,15 @@ def sakura_callback(request):
             audience == "OurTaiko" or (isinstance(audience, list) and "OurTaiko" in audience)
         ):
             raise ValueError("Unexpected Viewer token audience or issuer")
+        if link_intent:
+            return _complete_user_link(request, claims, link_intent)
         user = bound_ourtaiko_user(claims["sub"], application_id="Sakura")
     except ViewerBindingConflict:
         return _notice(request, "账号关联存在冲突，请联系 OurTaiko 管理员。", status=409)
     except ViewerAccountDisabled:
         return _notice(request, "账号不可用。", status=403)
     except ViewerBindingMissing:
-        if settings.SAKURA_REVERSE_SIGNUP_ENABLED:
+        if settings.SAKURA_REVERSE_SIGNUP_ENABLED or (settings.SAKURA_REVERSE_LINK_ENABLED and "ourtaiko_sub" in claims):
             return _begin_signup(request, claims)
         return _notice(
             request,
@@ -200,10 +215,14 @@ def _begin_signup(request, claims):
     """
     # Viewer already pairs this account with an OurTaiko one; that claim only ever blocks.
     if "ourtaiko_sub" in claims:
+        hint = claims.get("ourtaiko_sub")
+        confirm = bool(settings.SAKURA_REVERSE_LINK_ENABLED and isinstance(hint, str) and re.fullmatch(r"[a-f0-9]{32}", hint))
+        if confirm:
+            request.session[RECOVERY_SESSION_KEY] = {"user": hint, "sub": verified_viewer_sub(claims["sub"]), "expires": int(time.time()) + 600}
         return _notice(
             request,
             _("这个 Viewer 账号已经关联了一个 OurTaiko 账号。请先用 OurTaiko 登录名和密码登录，再完成关联。"),
-            status=409,
+            status=409, confirm=confirm,
         )
     email = claims.get("email")
     if claims.get("email_verified") is not True or not isinstance(email, str) or not email.strip():
@@ -295,3 +314,76 @@ def _create_signup(request, form, pending):
     request.session.pop(SIGNUP_SESSION_KEY, None)
     django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     return redirect("overview")
+
+
+def _same_link_session(request, intent):
+    return (request.user.is_authenticated and request.user.is_active
+            and intent.get("expires", 0) > time.time()
+            and intent.get("user") == request.user.pk
+            and intent.get("session") == request.session.session_key
+            and intent.get("auth_version") == request.user.auth_version
+            and constant_time_compare(intent.get("auth_hash", ""), request.user.get_session_auth_hash()))
+
+
+@never_cache
+@login_required
+@require_POST
+def start_sakura_link(request):
+    if not (settings.SAKURA_REVERSE_OIDC_ENABLED and settings.SAKURA_REVERSE_LINK_ENABLED):
+        raise Http404
+    hint = request.session.get(RECOVERY_SESSION_KEY)
+    if hint and hint.get("expires", 0) <= time.time():
+        request.session.pop(RECOVERY_SESSION_KEY, None)
+        hint = None
+    if hint and hint.get("user") != request.user.pk:
+        return _notice(request, _("账号关联存在冲突，请使用原账号或联系支持。"), status=409)
+    if not allow_attempt("sakura-link:" + request.user.pk, 20, 600):
+        return _notice(request, _("操作过于频繁，请稍后重试。"), status=429)
+    try:
+        response = _client().authorize_redirect(request, CALLBACK)
+        state = parse_qs(urlsplit(response["Location"]).query)["state"][0]
+        # One bounded intent per browser; Authlib still validates its own state.
+        for key in list(request.session.keys()):
+            if key.startswith(LINK_SESSION_KEY + ":"):
+                del request.session[key]
+        request.session[LINK_SESSION_KEY + ":" + state] = {
+            "user": request.user.pk, "session": request.session.session_key,
+            "auth_hash": request.user.get_session_auth_hash(), "auth_version": request.user.auth_version,
+            "expires": int(time.time()) + 600, "sub": hint.get("sub") if hint else None,
+        }
+        response["Cache-Control"] = "no-store"
+        return response
+    except Exception:
+        return _notice(request, _("Viewer 授权服务暂不可用，请稍后重试。"), status=503)
+
+
+def _complete_user_link(request, claims, intent):
+    sub = verified_viewer_sub(claims["sub"])
+    if ((intent.get("sub") and intent["sub"] != sub)
+            or ("ourtaiko_sub" in claims and claims["ourtaiko_sub"] != request.user.pk)):
+        return _notice(request, _("账号关联存在冲突，请使用原账号或联系支持。"), status=409)
+    try:
+        with transaction.atomic():
+            user = User.objects.select_for_update().get(pk=intent["user"])
+            session = Session.objects.select_for_update().filter(
+                session_key=intent["session"], expire_date__gt=timezone.now()).first()
+            stored = session.get_decoded() if session else {}
+            if (not _same_link_session(request, intent) or not user.is_active
+                    or user.auth_version != intent["auth_version"]
+                    or stored.get("_auth_user_id") != user.pk
+                    or not constant_time_compare(stored.get("_auth_user_hash", ""), user.get_session_auth_hash())):
+                return _notice(request, _("登录状态已变化，请重新登录后发起关联。"), status=409)
+            application = Application.objects.get(client_id="Sakura")
+            pairs = list(ExternalLink.objects.select_for_update().filter(application=application).filter(
+                Q(user=user) | Q(external_id=sub)))
+            if any(p.user_id != user.pk or p.external_id != sub for p in pairs):
+                return _notice(request, _("账号关联存在冲突，请使用原账号或联系支持。"), status=409)
+            if not pairs:
+                ExternalLink.objects.create(application=application, user=user, external_id=sub,
+                                            origin=ExternalLink.Origin.USER_LINK)
+            # Same pair: preserve the existing signup/partner_link origin.
+    except IntegrityError:
+        return _notice(request, _("账号关联存在冲突，请使用原账号或联系支持。"), status=409)
+    request.session.pop(RECOVERY_SESSION_KEY, None)
+    messages.success(request, _("Sakura Viewer 关联已确认。"))
+    return redirect("connections")
