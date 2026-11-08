@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: OurTaiko SSO\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-06 02:21-0500\n"
+"POT-Creation-Date: 2026-11-08 11:42+0000\n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -28,8 +28,45 @@ msgstr "The image dimensions are too large."
 
 #: accounts/avatars.py:52
 msgid "无法读取这张图片，请确认文件格式与扩展名一致。"
-msgstr ""
-"Cannot read this image. Make sure the file format matches its extension."
+msgstr "Cannot read this image. Make sure the file format matches its extension."
+
+#: accounts/email_login.py:62
+msgid "你的 OurTaiko 登录验证码"
+msgstr "Your OurTaiko sign-in code"
+
+
+#: accounts/email_login.py:64
+#, python-format
+msgid ""
+"你的 OurTaiko 登录验证码是：%(code)s\n"
+"\n"
+"验证码 10 分钟内有效。如果不是你在登录，请忽略这封邮件，不要把验证码告诉任何人。\n"
+msgstr "Your OurTaiko sign-in code is: %(code)s\n\nIt is valid for 10 minutes. If you were not signing in, ignore this email and do not share the code with anyone.\n"
+
+
+#: accounts/email_login.py:84 accounts/views.py:125
+msgid "发送次数过多，请稍后再试。"
+msgstr "Too many emails requested. Try again later."
+
+#: accounts/email_login.py:93
+msgid "验证码邮件暂时无法发送，请稍后再试。"
+msgstr "The code email cannot be sent right now. Please try again later."
+
+
+#: accounts/email_login.py:116
+msgid "验证码已过期，请重新获取。"
+msgstr "The code has expired. Please request a new one."
+
+
+#: accounts/email_login.py:124
+msgid "尝试次数过多，请重新获取验证码。"
+msgstr "Too many attempts. Please request a new code."
+
+
+#: accounts/email_login.py:136
+msgid "验证码不正确。"
+msgstr "Incorrect code."
+
 
 #: accounts/forms.py:12 accounts/forms.py:29 templates/accounts/demo.html:2
 #: templates/accounts/profile.html:5
@@ -66,9 +103,7 @@ msgstr "This email is already registered. Sign in or reset your password."
 
 #: accounts/forms.py:67
 msgid "最多 40 个字符。修改后，接入的服务会在缓存更新后显示新昵称。"
-msgstr ""
-"Up to 40 characters. Connected services show your new nickname after "
-"refreshing."
+msgstr "Up to 40 characters. Connected services show your new nickname after refreshing."
 
 #: accounts/forms.py:75
 msgid "上传新头像"
@@ -76,13 +111,21 @@ msgstr "Upload a new avatar"
 
 #: accounts/forms.py:76
 msgid "支持 JPG、JPEG、PNG、WebP，最大 5 MB。图片会裁成正方形并转换为 WebP。"
-msgstr ""
-"JPG, JPEG, PNG or WebP, up to 5 MB. Images are cropped to a square and "
-"converted to WebP."
+msgstr "JPG, JPEG, PNG or WebP, up to 5 MB. Images are cropped to a square and converted to WebP."
 
-#: accounts/forms.py:99
+#: accounts/forms.py:99 accounts/forms.py:104
 msgid "注册邮箱"
 msgstr "Registered email"
+
+#: accounts/forms.py:113
+msgid "验证码"
+msgstr "Code"
+
+
+#: accounts/forms.py:114
+msgid "验证码是 6 位数字。"
+msgstr "The code is 6 digits."
+
 
 #: accounts/models.py:19
 msgid "昵称需为 1–40 个字符。"
@@ -109,24 +152,16 @@ msgid "你已取消 Viewer 授权，关联状态没有变化。"
 msgstr "You cancelled Viewer authorization. Your link status is unchanged."
 
 #: accounts/sakura_oidc_views.py:229
-msgid ""
-"这个 Viewer 账号已经关联了一个 OurTaiko 账号。请先用 OurTaiko 登录名和密码登"
-"录，再完成关联。"
-msgstr ""
-"This Viewer account is already linked to an OurTaiko account. Sign in with "
-"your OurTaiko username and password first, then finish linking."
+msgid "这个 Viewer 账号已经关联了一个 OurTaiko 账号。请先用 OurTaiko 登录名和密码登录，再完成关联。"
+msgstr "This Viewer account is already linked to an OurTaiko account. Sign in with your OurTaiko username and password first, then finish linking."
 
 #: accounts/sakura_oidc_views.py:235
 msgid "你的 Viewer 邮箱还没有验证。请先在 Viewer 完成邮箱验证，再回来登录。"
-msgstr ""
-"Your Viewer email is not verified yet. Verify it in Viewer, then come back "
-"to sign in."
+msgstr "Your Viewer email is not verified yet. Verify it in Viewer, then come back to sign in."
 
 #: accounts/sakura_oidc_views.py:247 accounts/sakura_oidc_views.py:299
 msgid "这个邮箱已经有 OurTaiko 账号。请先登录原账号，再关联 Sakura Viewer。"
-msgstr ""
-"This email already has an OurTaiko account. Sign in to that account first, "
-"then link Sakura Viewer."
+msgstr "This email already has an OurTaiko account. Sign in to that account first, then link Sakura Viewer."
 
 #: accounts/sakura_oidc_views.py:275
 msgid "注册已超时，请重新使用 Sakura Viewer 登录。"
@@ -137,11 +172,8 @@ msgid "注册次数过多，请一小时后再试。"
 msgstr "Too many registrations. Try again in one hour."
 
 #: accounts/sakura_oidc_views.py:294
-msgid ""
-"这个 Viewer 账号已经关联了 OurTaiko 账号，请重新使用 Sakura Viewer 登录。"
-msgstr ""
-"This Viewer account is now linked to an OurTaiko account. Sign in with "
-"Sakura Viewer again."
+msgid "这个 Viewer 账号已经关联了 OurTaiko 账号，请重新使用 Sakura Viewer 登录。"
+msgstr "This Viewer account is now linked to an OurTaiko account. Sign in with Sakura Viewer again."
 
 #: accounts/sakura_oidc_views.py:317 accounts/views.py:85
 msgid "登录名或邮箱已被使用。"
@@ -211,19 +243,13 @@ msgstr "Request a new verification email."
 msgid "邮箱验证完成，现在可以登录了。"
 msgstr "Email verified. You can now sign in."
 
-#: accounts/views.py:125
-msgid "发送次数过多，请稍后再试。"
-msgstr "Too many emails requested. Try again later."
-
 #: accounts/views.py:133 accounts/views.py:277
 msgid "请查看你的邮箱"
 msgstr "Check your email"
 
 #: accounts/views.py:133
 msgid "如果该邮箱有待验证的账号，我们已发送新的验证邮件。"
-msgstr ""
-"If this email has an unverified account, a new verification email has been "
-"sent."
+msgstr "If this email has an unverified account, a new verification email has been sent."
 
 #: accounts/views.py:138 templates/accounts/notice.html:2
 msgid "重新发送验证邮件"
@@ -263,9 +289,7 @@ msgstr "Account status changed. Refresh and try again."
 
 #: accounts/views.py:254
 msgid "密码已更新，其他设备和游戏登录已失效。当前浏览器保持登录。"
-msgstr ""
-"Password updated. Other devices and games have been signed out. This browser "
-"stays signed in."
+msgstr "Password updated. Other devices and games have been signed out. This browser stays signed in."
 
 #: accounts/views.py:263
 msgid "发送次数过多，请一小时后再试。"
@@ -273,9 +297,7 @@ msgstr "Too many emails requested. Try again in one hour."
 
 #: accounts/views.py:278
 msgid "如果该邮箱绑定了可用账号，我们已发送密码重置链接。链接 30 分钟内有效。"
-msgstr ""
-"If this email belongs to an eligible account, a password reset link has been "
-"sent. It is valid for 30 minutes."
+msgstr "If this email belongs to an eligible account, a password reset link has been sent. It is valid for 30 minutes."
 
 #: accounts/views.py:285
 msgid "找回密码"
@@ -305,11 +327,11 @@ msgstr "All sessions and authorizations revoked. Sign in again."
 msgid "应用授权已撤销。"
 msgstr "App authorization revoked."
 
-#: config/settings.py:192
+#: config/settings.py:195
 msgid "确认你的账号身份"
 msgstr "Confirm your account identity"
 
-#: config/settings.py:192
+#: config/settings.py:195
 msgid "读取你的昵称、登录名和偏好语言"
 msgstr "Read your nickname, username and preferred language"
 
@@ -345,8 +367,7 @@ msgstr "One account. Everything you love."
 
 #: templates/accounts/auth_shell.html:4
 msgid "管理你的资料与安全设置。在 OurTaiko 的世界里，保持同一个你。"
-msgstr ""
-"Manage your profile and security. Be yourself across the world of OurTaiko."
+msgstr "Manage your profile and security. Be yourself across the world of OurTaiko."
 
 #: templates/accounts/connections.html:1 templates/accounts/connections.html:2
 #: templates/accounts/overview.html:5 templates/accounts/shell.html:11
@@ -399,9 +420,7 @@ msgstr "Website sign-in"
 
 #: templates/accounts/connections.html:4
 msgid "撤销授权不会解除账号绑定。解绑请联系管理员。"
-msgstr ""
-"Revoking access does not remove the account link. Contact an administrator "
-"to unlink."
+msgstr "Revoking access does not remove the account link. Contact an administrator to unlink."
 
 #: templates/accounts/connections.html:4
 msgid "撤销授权"
@@ -425,9 +444,7 @@ msgstr "Try website sign-in"
 
 #: templates/accounts/connections.html:4
 msgid "应用只能取得授权范围内的资料，无法读取你保存的密码。"
-msgstr ""
-"Apps only receive authorized information and cannot read your stored "
-"password."
+msgstr "Apps only receive authorized information and cannot read your stored password."
 
 #: templates/accounts/demo.html:1
 msgid "登录演示成功"
@@ -483,11 +500,11 @@ msgstr "Apply language"
 msgid "登录"
 msgstr "Sign in"
 
-#: templates/accounts/login.html:2
+#: templates/accounts/login.html:2 templates/accounts/login_email.html:2
 msgid "欢迎回来"
 msgstr "WELCOME BACK"
 
-#: templates/accounts/login.html:2
+#: templates/accounts/login.html:2 templates/accounts/login_email.html:2
 msgid "跟上你的节奏。"
 msgstr "Find your rhythm."
 
@@ -495,33 +512,105 @@ msgstr "Find your rhythm."
 msgid "登录 OurTaiko，所有连接从这里开始。"
 msgstr "Sign in to OurTaiko. Your connections start here."
 
-#: templates/accounts/login.html:3
+#: templates/accounts/login.html:4 templates/accounts/login_email.html:4
 msgid "验证邮件没收到？"
 msgstr "Didn't receive the email?"
 
-#: templates/accounts/login.html:3
+#: templates/accounts/login.html:4 templates/accounts/login_email.html:4
 msgid "忘记密码？"
 msgstr "Forgot password?"
 
-#: templates/accounts/login.html:3
+#: templates/accounts/login.html:4 templates/accounts/login_code.html:3
 msgid "登录账号"
 msgstr "Sign in"
-
-#: templates/accounts/login.html:4 templates/accounts/sakura_signup.html:2
-msgid "使用 Sakura Viewer 登录"
-msgstr "Sign in with Sakura Viewer"
-
-#: templates/accounts/login.html:5
-msgid "还没有账号？"
-msgstr "No account yet?"
-
-#: templates/accounts/login.html:5
-msgid "创建 OurTaiko 账号"
-msgstr "Create an OurTaiko account"
 
 #: templates/accounts/login.html:5
 msgid "你的密码仅由 OurTaiko 账号中心验证。"
 msgstr "Your password is verified only by the OurTaiko account center."
+
+#: templates/accounts/login_code.html:1
+msgid "输入验证码"
+msgstr "Enter code"
+
+
+#: templates/accounts/login_code.html:2
+msgid "去邮箱看看"
+msgstr "Check your inbox"
+
+
+#: templates/accounts/login_code.html:2
+msgid "输入验证码。"
+msgstr "Enter your code."
+
+
+#: templates/accounts/login_code.html:2
+#, python-format
+msgid "如果 %(email)s 绑定了可用账号，验证码已经发出，10 分钟内有效。"
+msgstr "If %(email)s belongs to a usable account, a code is on its way and stays valid for 10 minutes."
+
+
+#: templates/accounts/login_code.html:3
+msgid "换个邮箱"
+msgstr "Use another email"
+
+
+#: templates/accounts/login_code.html:3
+msgid "重新发送验证码"
+msgstr "Resend code"
+
+
+#: templates/accounts/login_code.html:4
+msgid "改用密码登录"
+msgstr "Sign in with password instead"
+
+
+#: templates/accounts/login_code.html:4
+msgid "OurTaiko 不会通过邮件或聊天向你索要验证码。"
+msgstr "OurTaiko will never ask you for this code by email or chat."
+
+
+#: templates/accounts/login_email.html:1 templates/accounts/login_tabs.html:1
+msgid "邮箱验证码登录"
+msgstr "Email code"
+
+
+#: templates/accounts/login_email.html:2
+msgid "输入注册邮箱，我们会发送一次性验证码。没有设置密码的账号也能这样登录。"
+msgstr "Enter your registered email and we will send a one-time code. Accounts without a password can sign in this way too."
+
+
+#: templates/accounts/login_email.html:4
+msgid "发送验证码"
+msgstr "Send code"
+
+
+#: templates/accounts/login_email.html:5
+msgid "验证码只会发到你验证过的注册邮箱。"
+msgstr "Codes are only sent to the verified email on your account."
+
+
+#: templates/accounts/login_footer.html:1
+#: templates/accounts/sakura_signup.html:2
+msgid "使用 Sakura Viewer 登录"
+msgstr "Sign in with Sakura Viewer"
+
+#: templates/accounts/login_footer.html:2
+msgid "还没有账号？"
+msgstr "No account yet?"
+
+#: templates/accounts/login_footer.html:2
+msgid "创建 OurTaiko 账号"
+msgstr "Create an OurTaiko account"
+
+#: templates/accounts/login_tabs.html:1
+msgid "登录方式"
+msgstr "Sign-in method"
+
+
+#: templates/accounts/login_tabs.html:1
+msgid "密码登录"
+msgstr "Password"
+
 
 #: templates/accounts/notice.html:2
 msgid "登录原账号并确认关联"
@@ -654,9 +743,7 @@ msgstr "Account information"
 
 #: templates/accounts/profile.html:5
 msgid "唯一标识符用于关联作品与成绩，不会随昵称变化。"
-msgstr ""
-"Your unique ID links your charts and scores. It does not change with your "
-"nickname."
+msgstr "Your unique ID links your charts and scores. It does not change with your nickname."
 
 #: templates/accounts/profile.html:5
 msgid "尚未绑定"
@@ -745,12 +832,8 @@ msgstr "Finish signing up"
 
 #: templates/accounts/sakura_signup.html:2
 #, python-format
-msgid ""
-"将用你在 Viewer 验证过的邮箱 %(email)s 创建 OurTaiko 账号，以后可以直接用 "
-"Sakura Viewer 登录。"
-msgstr ""
-"An OurTaiko account will be created with %(email)s, the email you verified "
-"in Viewer. From then on you can sign in with Sakura Viewer."
+msgid "将用你在 Viewer 验证过的邮箱 %(email)s 创建 OurTaiko 账号，以后可以直接用 Sakura Viewer 登录。"
+msgstr "An OurTaiko account will be created with %(email)s, the email you verified in Viewer. From then on you can sign in with Sakura Viewer."
 
 #: templates/accounts/sakura_signup.html:2
 msgid "创建账号并登录"
@@ -762,9 +845,7 @@ msgstr "Already have an OurTaiko account?"
 
 #: templates/accounts/sakura_signup.html:2
 msgid "新账号没有密码。需要用登录名登录时，可以通过「忘记密码」设置一个。"
-msgstr ""
-"The new account has no password. To sign in with your username, set one "
-"through \"Forgot password?\"."
+msgstr "The new account has no password. To sign in with your username, set one through \"Forgot password?\"."
 
 #: templates/accounts/security.html:1 templates/accounts/security.html:2
 #: templates/accounts/shell.html:10
@@ -785,8 +866,7 @@ msgstr "Change password"
 
 #: templates/accounts/security.html:3
 msgid "修改后，其他浏览器和游戏需要重新登录。"
-msgstr ""
-"Other browsers and games must sign in again after changing your password."
+msgstr "Other browsers and games must sign in again after changing your password."
 
 #: templates/accounts/security.html:3
 msgid "更新密码"
@@ -795,9 +875,7 @@ msgstr "Update password"
 #: templates/accounts/security.html:3
 #, python-format
 msgid "忘记当前密码？可以通过 <a href=\"%(reset_url)s\">注册邮箱找回密码</a>。"
-msgstr ""
-"Forgot your password? <a href=\"%(reset_url)s\">Reset it using your "
-"registered email</a>."
+msgstr "Forgot your password? <a href=\"%(reset_url)s\">Reset it using your registered email</a>."
 
 #: templates/accounts/sessions.html:1 templates/accounts/sessions.html:2
 #: templates/accounts/shell.html:12
@@ -846,9 +924,7 @@ msgstr "Game account sign-ins"
 
 #: templates/accounts/sessions.html:4
 msgid "在 OurTaikoPlay 里登录过的设备。30 天不使用会自动退出。"
-msgstr ""
-"Devices signed in to OurTaikoPlay. A device is signed out after 30 days "
-"without use."
+msgstr "Devices signed in to OurTaikoPlay. A device is signed out after 30 days without use."
 
 #: templates/accounts/sessions.html:4
 #, python-format
@@ -957,9 +1033,7 @@ msgstr "This app requests the following permissions"
 
 #: templates/oauth2_provider/authorize.html:2
 msgid "读取你的邮箱，并把你的 OurTaiko 账号与该应用的账号绑定"
-msgstr ""
-"Read your email address and link your OurTaiko account to your account on "
-"this app"
+msgstr "Read your email address and link your OurTaiko account to your account on this app"
 
 #: templates/oauth2_provider/authorize.html:2
 msgid "取消"
@@ -976,6 +1050,3 @@ msgstr "Unable to connect right now"
 #: templates/oauth2_provider/authorize.html:2
 msgid "返回账号中心"
 msgstr "Back to account center"
-
-
-

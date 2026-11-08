@@ -910,6 +910,38 @@ input:focus-visible {
 .auth-form {
   margin-top: 28px;
 }
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 28px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f4f5f1;
+}
+.auth-tabs a {
+  text-align: center;
+  padding: 9px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 550;
+  color: #7d8275;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.auth-tabs a:hover {
+  color: var(--ink);
+}
+.auth-tabs a.active {
+  background: white;
+  color: var(--ink);
+  box-shadow: 0 1px 3px #292b2a14;
+}
+.auth-tabs + .auth-form {
+  margin-top: 20px;
+}
 .auth-form .field label {
   font-size: 12px;
 }

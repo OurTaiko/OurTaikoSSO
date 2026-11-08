@@ -1,0 +1,2 @@
+{% load i18n %}{% if sakura_reverse_oidc_enabled %}<p class="auth-switch"><a href="{% url 'sakura-oidc-start' %}">{% translate '使用 Sakura Viewer 登录' %}</a></p>{% endif %}
+<p class="auth-switch">{% translate '还没有账号？' %} <a href="{% url 'register' %}">{% translate '创建 OurTaiko 账号' %}</a></p>

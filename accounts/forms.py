@@ -99,6 +99,25 @@ class EmailForm(forms.Form):
     email = forms.EmailField(label=_("注册邮箱"), max_length=254)
 
 
+class EmailLoginForm(forms.Form):
+    email = forms.EmailField(
+        label=_("注册邮箱"),
+        max_length=254,
+        widget=forms.EmailInput(attrs={"autocomplete": "email", "autofocus": True}),
+    )
+
+
+class EmailCodeForm(forms.Form):
+    code = forms.RegexField(
+        r"^[0-9]{6}$",
+        label=_("验证码"),
+        error_messages={"invalid": _("验证码是 6 位数字。")},
+        widget=forms.TextInput(
+            attrs={"inputmode": "numeric", "autocomplete": "one-time-code", "maxlength": "6", "autofocus": True}
+        ),
+    )
+
+
 class VerifiedPasswordResetForm(PasswordResetForm):
     def get_users(self, email):
         # Unlike Django's default, accounts without a password (created by signing in through a

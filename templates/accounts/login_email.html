@@ -1,0 +1,6 @@
+{% extends 'accounts/auth_shell.html' %}{% load i18n %}{% block title %}{% translate '邮箱验证码登录' %}{% endblock %}{% block content %}
+<span class="eyebrow">{% translate '欢迎回来' %}</span><h1>{% translate '跟上你的节奏。' %}</h1><p class="lead">{% translate '输入注册邮箱，我们会发送一次性验证码。没有设置密码的账号也能这样登录。' %}</p>
+{% include 'accounts/login_tabs.html' %}
+<form method="post" class="auth-form">{% csrf_token %}{% include 'accounts/fields.html' %}<input type="hidden" name="next" value="{{ next }}"><div class="form-links"><a href="{% url 'resend-verification' %}">{% translate '验证邮件没收到？' %}</a><a href="{% url 'password-reset' %}">{% translate '忘记密码？' %}</a></div><button class="button primary full" type="submit">{% translate '发送验证码' %} <svg><use href="#i-arrow"/></svg></button></form>
+{% include 'accounts/login_footer.html' %}<div class="privacy-note"><svg><use href="#i-lock"/></svg>{% translate '验证码只会发到你验证过的注册邮箱。' %}</div>
+{% endblock %}
