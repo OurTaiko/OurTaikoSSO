@@ -1,4 +1,5 @@
 import os
+from email.utils import parseaddr
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -180,8 +181,34 @@ EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").lower() == "true"
-EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() == "true"
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "false" if EMAIL_USE_SSL else "true").lower() == "true"
 EMAIL_TIMEOUT = 10
+
+
+def email_senders(getenv, default_from, host_user, host_password):
+    """One sender per kind of mail: verification links, sign-in codes and password resets.
+
+    EMAIL_<KIND>_FROM names the address a kind leaves from; providers such as Alibaba Cloud
+    DirectMail bind SMTP credentials to the sender address, so the connection logs in as that
+    address (EMAIL_<KIND>_USER overrides) with EMAIL_<KIND>_PASSWORD. Anything unset falls back to
+    DEFAULT_FROM_EMAIL, EMAIL_HOST_USER and EMAIL_HOST_PASSWORD.
+    """
+    senders = {}
+    for kind in ("verify", "login_code", "reset"):
+        prefix = "EMAIL_" + kind.upper() + "_"
+        from_email = getenv(prefix + "FROM", "").strip()
+        address = parseaddr(from_email)[1]
+        if from_email and (not address or "@" not in address or "\n" in from_email):
+            raise ImproperlyConfigured(prefix + "FROM must be an email address such as 'OurTaiko <no-reply@example.com>'.")
+        senders[kind] = {
+            "from_email": from_email or default_from,
+            "username": getenv(prefix + "USER", "") or (address if from_email else host_user),
+            "password": getenv(prefix + "PASSWORD", "") or host_password,
+        }
+    return senders
+
+
+EMAIL_SENDERS = email_senders(os.getenv, DEFAULT_FROM_EMAIL, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD)
 key_path = Path(os.getenv("OIDC_PRIVATE_KEY_FILE", ".data/oidc-private.pem"))
 if not key_path.is_absolute():
     key_path = BASE_DIR / key_path

@@ -1,11 +1,16 @@
+import logging
+
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm, PasswordResetForm, UserCreationForm
+from django.template import loader
 from django.utils import translation
 from django.utils.translation import gettext_lazy as _
 
-from . import avatars
+from . import avatars, mail
 from .models import User
 from .security import login_allowed
+
+logger = logging.getLogger(__name__)
 
 
 class LoginForm(AuthenticationForm):
@@ -125,7 +130,13 @@ class VerifiedPasswordResetForm(PasswordResetForm):
         users = User.objects.filter(email__iexact=email, is_active=True, email_verified=True)
         return (user for user in users if user.email.casefold() == email.casefold())
 
-    def send_mail(self, subject_template_name, email_template_name, context, *args, **kwargs):
+    def send_mail(self, subject_template_name, email_template_name, context, from_email, to_email, **kwargs):
         # Background/email rendering follows the recipient, not the requesting browser.
         with translation.override(context["user"].preferred_language):
-            return super().send_mail(subject_template_name, email_template_name, context, *args, **kwargs)
+            subject = "".join(loader.render_to_string(subject_template_name, context).splitlines())
+            body = loader.render_to_string(email_template_name, context)
+        try:
+            mail.send("reset", subject, body, to_email)
+        except Exception:
+            # Like Django's PasswordResetForm: a mail failure must not reveal whether the address exists.
+            logger.exception("Failed to send password reset email to %s", context["user"].pk)

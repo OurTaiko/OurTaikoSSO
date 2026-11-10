@@ -134,7 +134,7 @@ class EmailLoginTests(TestCase):
         self.assertContains(self.request_code("other9@example.test"), "发送次数过多")
 
     def test_mail_failure_is_reported_without_details(self):
-        with mock.patch("accounts.email_login.send_mail", side_effect=smtplib.SMTPException("relay 550 secret-host")):
+        with mock.patch("accounts.mail.send", side_effect=smtplib.SMTPException("relay 550 secret-host")):
             response = self.request_code()
         self.assertContains(response, "暂时无法发送")
         self.assertNotContains(response, "secret-host")

@@ -51,7 +51,7 @@ sh scripts/dev.sh
 
 默认不发送真实邮件，注册验证和密码重置邮件写入 **`.data/emails/`**。打开最新文件，复制其中的链接到浏览器即可完成流程。重置密码只发送到已验证邮箱；导入的历史未验证邮箱不会获得密码重置权限。
 
-真正发送邮件时在 `.env` 配置 `EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend` 及 SMTP 参数。不要直接复制或提交原服务的 SMTP 密码。
+真正发送邮件时在 `.env` 配置 `EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend` 及 SMTP 参数。不要直接复制或提交原服务的 SMTP 密码。 注册验证、邮箱验证码登录、找回密码三类邮件可以各用一个发信地址（`EMAIL_VERIFY_FROM`、`EMAIL_LOGIN_CODE_FROM`、`EMAIL_RESET_FROM` 及对应的 `_PASSWORD`），没配的类型沿用共用账号，见 `.env.example`。
 
 ## 导入已有测试账号
 

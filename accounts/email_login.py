@@ -14,7 +14,6 @@ import time
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login as django_login
-from django.core.mail import send_mail
 from django.http import Http404
 from django.shortcuts import redirect, render
 from django.utils import translation
@@ -24,6 +23,7 @@ from django.utils.translation import gettext_lazy as _
 from django.views.decorators.cache import never_cache
 from django.views.decorators.debug import sensitive_post_parameters
 
+from . import mail
 from .forms import EmailCodeForm, EmailLoginForm
 from .models import User
 from .security import allow_attempt
@@ -58,15 +58,15 @@ def _usable_account(email):
 def _send_code(user, code):
     # Background/email rendering follows the recipient, not the requesting browser.
     with translation.override(user.preferred_language):
-        send_mail(
+        mail.send(
+            "login_code",
             str(_("你的 OurTaiko 登录验证码")),
             _(
                 "你的 OurTaiko 登录验证码是：%(code)s\n\n"
                 "验证码 10 分钟内有效。如果不是你在登录，请忽略这封邮件，不要把验证码告诉任何人。\n"
             )
             % {"code": code},
-            None,
-            [user.email],
+            user.email,
         )
 
 

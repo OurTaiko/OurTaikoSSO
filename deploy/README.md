@@ -27,12 +27,23 @@ DATABASE_URL=postgres://ourtaiko_sso:<password>@127.0.0.1:5432/ourtaiko_sso
 OIDC_PRIVATE_KEY_FILE=/app/.data/oidc-private.pem
 TRUST_PROXY_HEADERS=true
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
-EMAIL_HOST=<existing SMTP server>
-EMAIL_PORT=587
-EMAIL_HOST_USER=<SMTP account>
-EMAIL_HOST_PASSWORD=<SMTP password>
-EMAIL_USE_TLS=true
-DEFAULT_FROM_EMAIL=OurTaiko <no-reply@example.com>
+# Alibaba Cloud DirectMail: the login name is the sender address itself, and each sender address
+# has its own SMTP password set in the DirectMail console. Port 465 with SSL (25 and 80 also work
+# with STARTTLS: EMAIL_PORT=80, EMAIL_USE_SSL=false, EMAIL_USE_TLS=true).
+EMAIL_HOST=smtpdm.aliyun.com
+EMAIL_PORT=465
+EMAIL_USE_SSL=true
+EMAIL_HOST_USER=<sender address, e.g. no-reply@mail.example.com>
+EMAIL_HOST_PASSWORD=<that address's SMTP password>
+DEFAULT_FROM_EMAIL=OurTaiko <no-reply@mail.example.com>
+# Optional: a sender address per kind of mail (VERIFY = registration links, LOGIN_CODE = sign-in
+# codes, RESET = password resets). Unset kinds use the shared account above.
+EMAIL_VERIFY_FROM=OurTaiko <verify@mail.example.com>
+EMAIL_VERIFY_PASSWORD=<verify@... SMTP password>
+EMAIL_LOGIN_CODE_FROM=OurTaiko <login@mail.example.com>
+EMAIL_LOGIN_CODE_PASSWORD=<login@... SMTP password>
+EMAIL_RESET_FROM=OurTaiko <security@mail.example.com>
+EMAIL_RESET_PASSWORD=<security@... SMTP password>
 FANMADE_OIDC_CLIENT_ID=ourtaiko-fanmade-web
 FANMADE_OIDC_CLIENT_SECRET=<strong random secret>
 FANMADE_REDIRECT_URI=https://fanmade.ourtaiko.org/api/v1/auth/sso/callback

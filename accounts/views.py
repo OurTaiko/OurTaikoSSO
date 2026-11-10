@@ -9,7 +9,6 @@ from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.views import INTERNAL_RESET_SESSION_TOKEN, LoginView, PasswordResetConfirmView
 from django.contrib.sessions.models import Session
 from django.core import signing
-from django.core.mail import send_mail
 from django.db import IntegrityError, connection, transaction
 from django.db.models import Q
 from django.http import Http404, HttpResponse, JsonResponse
@@ -22,7 +21,7 @@ from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_POST
 from oauth2_provider.models import AccessToken, Application, Grant, IDToken, RefreshToken
 
-from . import avatars
+from . import avatars, mail
 from .forms import AvatarForm, EmailForm, LoginForm, ProfileForm, RegistrationForm, VerifiedPasswordResetForm
 from .models import BrowserSession, ExternalLink, GameAccount, GameSession, User
 from .security import allow_attempt, revoke_user_tokens
@@ -60,11 +59,11 @@ def send_verification(user):
     )
     url = settings.SSO_BASE_URL + "/verify/" + token + "/"
     with translation.override(user.preferred_language):
-        send_mail(
+        mail.send(
+            "verify",
             str(_("验证你的 OurTaiko 邮箱")),
             _("请打开下方链接并确认邮箱（30 分钟内有效）：\n\n%(url)s\n") % {"url": url},
-            None,
-            [user.email],
+            user.email,
         )
 
 
@@ -267,6 +266,7 @@ def password_reset(request):
             # Reset emails use the configured canonical origin, never the incoming Host.
             form.save(
                 request=request,
+                from_email=mail.sender("reset")["from_email"],
                 domain_override=urlsplit(settings.SSO_BASE_URL).netloc,
                 use_https=settings.SSO_BASE_URL.startswith("https://"),
                 email_template_name="accounts/reset_email.txt",
