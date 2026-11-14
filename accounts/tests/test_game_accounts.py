@@ -29,6 +29,12 @@ class GameAccountTests(TestCase):
         body = {"username": "player", "password": "Testing!4279", **body}
         return self.client.post("/api/v1/game/account/login", body, content_type="application/json")
 
+    def test_the_login_name_may_be_typed_in_any_case(self):
+        response = self.login(username="PLAYER")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["user"]["username"], "player")
+        self.assertEqual(self.login(username="PLAYER", password="wrong").status_code, 401)
+
     def token(self):
         response = self.login(deviceName="Desk PC")
         self.assertEqual(response.status_code, 200)

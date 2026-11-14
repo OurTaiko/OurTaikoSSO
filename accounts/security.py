@@ -30,7 +30,8 @@ def allow_attempt(key, limit=10, seconds=600):
 def login_allowed(request, username):
     # Forwarded headers are deliberately not trusted. Gateways must also limit their public login route.
     ip_ok = allow_attempt("login-ip:" + request.META.get("REMOTE_ADDR", "unknown"), 60)
-    user_ok = allow_attempt("login-user:" + username[:100], 15)
+    # One count for a login name however it is capitalised, as it is one account.
+    user_ok = allow_attempt("login-user:" + username[:100].lower(), 15)
     return ip_ok and user_ok
 
 

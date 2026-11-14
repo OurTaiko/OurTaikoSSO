@@ -60,6 +60,13 @@ class PartnerSignupForm(forms.ModelForm):
         labels = RegistrationForm.Meta.labels
         help_texts = RegistrationForm.Meta.help_texts
 
+    def clean_username(self):
+        # As registration does: a name that differs from someone's only in case is taken.
+        username = self.cleaned_data["username"]
+        if User.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError(self.instance.unique_error_message(User, ["username"]))
+        return username
+
     def clean_nickname(self):
         return self.cleaned_data["nickname"].strip()
 

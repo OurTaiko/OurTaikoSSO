@@ -8,6 +8,7 @@ import bcrypt
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.core import mail
+from django.db import IntegrityError, transaction
 from django.test import Client, TestCase
 from django.utils import timezone
 from jwcrypto import jwk, jwt
@@ -121,15 +122,48 @@ class AccountTests(TestCase):
             for body in [{"usernames": ["player1"]}, {"userIds": [self.user.pk], "usernames": ["player1"]}]:
                 self.assertEqual(self.api(path, body).status_code, 400)
 
-    def test_profiles_by_username_are_exact_minimal_and_current(self):
+    def test_a_login_name_is_one_name_however_it_is_capitalised(self):
+        # Signing in: the website, a service's game login, and the name as registered in the answer.
+        for name in ["player1", "Player1", "PLAYER1"]:
+            browser = Client()
+            response = browser.post("/login/", {"username": name, "password": PASSWORD})
+            self.assertEqual(response.status_code, 302, name)
+            self.assertEqual(browser.session["_auth_user_id"], self.user.pk)
+            response = self.api("game/login", {"username": name, "password": PASSWORD})
+            self.assertEqual(response.status_code, 200, name)
+            self.assertEqual(response.json()["user"]["username"], "player1")
+        self.assertEqual(self.client.post("/login/", {"username": "PLAYER1", "password": "bad"}).status_code, 200)
+        self.assertEqual(self.api("game/login", {"username": "PLAYER", "password": PASSWORD}).status_code, 401)
+        # Registering: a name that differs from someone's only in case is taken.
+        response = self.client.post("/register/", {
+            "username": "PLAYER1", "nickname": "别人", "email": "other@example.test",
+            "password1": PASSWORD, "password2": PASSWORD,
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "去邮箱看看吧")
+        self.assertEqual(User.objects.count(), 1)
+        # And the database holds the rule whatever code writes the row.
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            User.objects.create_user(username="Player1", nickname="别人", password=PASSWORD)
+        self.assertEqual(User.objects.get_by_natural_key("pLaYeR1"), self.user)
+
+    def test_failed_sign_ins_count_together_however_the_name_is_capitalised(self):
+        for attempt in range(15):
+            name = ["player1", "Player1", "PLAYER1"][attempt % 3]
+            self.assertEqual(self.api("game/login", {"username": name, "password": "bad"}).status_code, 401)
+        self.assertEqual(self.api("game/login", {"username": "pLAYER1", "password": PASSWORD}).status_code, 429)
+
+    def test_profiles_by_username_are_whole_names_minimal_and_current(self):
         path = "users/lookup-by-username"
         self.user.nickname = "新的昵称"
         self.user.save()
-        result = self.api(path, {"usernames": ["missing", "player1", "player1", "Player1"]})
+        # A whole name whatever its case, each player once, the name as its owner wrote it.
+        result = self.api(path, {"usernames": ["missing", "player1", "player1", "Player1", "player", "player12"]})
         self.assertEqual(result.status_code, 200)
         self.assertEqual(result.json(), {"users": [{
             "id": self.user.pk, "username": "player1", "nickname": "新的昵称", "avatarUrl": "",
         }]})
+        self.assertEqual(self.api(path, {"usernames": ["PLAYER1"]}).json()["users"][0]["id"], self.user.pk)
         for body in [
             {"usernames": ["player1"] * 101}, {"usernames": [17]}, {"usernames": [""]},
             {"usernames": [" player1"]}, {"usernames": ["a" * 25]},

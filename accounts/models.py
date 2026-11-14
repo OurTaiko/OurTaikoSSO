@@ -2,7 +2,7 @@ import secrets
 import unicodedata
 
 from django.conf import settings
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
@@ -19,6 +19,15 @@ def validate_nickname(value):
         raise ValidationError(_("昵称需为 1–40 个字符。"))
     if any(unicodedata.category(c).startswith("C") or c in "\u2028\u2029" for c in value):
         raise ValidationError(_("昵称不能包含换行或控制字符。"))
+
+
+class AccountManager(UserManager):
+    """A login name is one name however it is capitalised: Player1, player1 and PLAYER1 sign
+    in to the same account, and no two accounts differ only in case (sso_unique_username). The
+    name is kept and shown as its owner typed it when registering."""
+
+    def get_by_natural_key(self, username):
+        return self.get(username__iexact=username)
 
 
 class User(AbstractUser):
@@ -50,8 +59,11 @@ class User(AbstractUser):
     # Name inside the avatar storage (S3 prefix "sso/"), e.g. "avatars/<id>/<sha>.webp".
     avatar = models.CharField(max_length=128, blank=True, editable=False)
 
+    objects = AccountManager()
+
     class Meta:
         constraints = [
+            models.UniqueConstraint(Lower("username"), name="sso_unique_username"),
             models.UniqueConstraint(
                 Lower("email"),
                 condition=~models.Q(email=""),

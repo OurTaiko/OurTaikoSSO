@@ -8,6 +8,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import check_password
 from django.core.exceptions import RequestDataTooBig
 from django.db import IntegrityError, transaction
+from django.db.models.functions import Lower
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -196,8 +197,13 @@ def profiles_by_username(request, client, body):
         or not all(isinstance(v, str) and re.fullmatch(r"\S{1,24}", v) for v in usernames)
     ):
         return problem(400, "REQUEST_INVALID", "usernames 必须包含至多 100 个用户名，每个 1–24 字符且无空白")
-    # Exact, case-sensitive matching agrees with login and username uniqueness.
-    users = User.objects.filter(username__in=usernames, is_active=True).only("id", "username", "nickname", "avatar")
+    # Whole names, whatever their case: this agrees with login and username uniqueness. The
+    # answer carries each name as its owner wrote it.
+    users = (
+        User.objects.annotate(login=Lower("username"))
+        .filter(login__in={v.lower() for v in usernames}, is_active=True)
+        .only("id", "username", "nickname", "avatar")
+    )
     return JsonResponse({"users": [
         {"id": u.pk, "username": u.username, "nickname": u.nickname, "avatarUrl": avatar_url(u)}
         for u in users

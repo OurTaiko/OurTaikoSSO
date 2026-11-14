@@ -134,6 +134,10 @@ class SakuraSignupTests(TestCase):
         response = self.sign_up()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(User.objects.count(), 1)
+        # Nor a name that differs from someone's only in case.
+        response = self.sign_up(username="ViewerPlayer")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(User.objects.count(), 1)
         self.assertRedirects(self.sign_up(username="viewer2"), "/", fetch_redirect_response=False)
 
     def test_the_pending_sign_up_expires(self):
