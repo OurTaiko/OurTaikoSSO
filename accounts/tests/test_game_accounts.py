@@ -1,11 +1,12 @@
 from datetime import timedelta
+from io import StringIO
 
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from oauth2_provider.models import Application
 
-from accounts.models import ApplicationAccess, GameAccount, GameSession, User
+from accounts.models import ApplicationAccess, GameAccount, GameAuthorization, GameSession, User
 from accounts.security import digest
 
 
@@ -34,6 +35,50 @@ class GameAccountTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["user"]["username"], "player")
         self.assertEqual(self.login(username="PLAYER", password="wrong").status_code, 401)
+
+    def start_device(self):
+        return self.client.post("/api/v1/game/account/device", {"deviceName": "Test 2P"},
+                                content_type="application/json").json()
+
+    def poll_device(self, grant):
+        return self.client.post("/api/v1/game/account/device/token", {"deviceCode": grant["deviceCode"]},
+                                content_type="application/json")
+
+    def test_browser_consent_and_single_use_device_exchange(self):
+        grant = self.start_device()
+        self.assertEqual(self.poll_device(grant).status_code, 202)
+        self.assertEqual(self.client.get("/game/authorize/").status_code, 302)
+        self.client.force_login(self.user)
+        preview = self.client.get("/game/authorize/", {"code": grant["userCode"]})
+        self.assertNotContains(preview, grant["deviceCode"])
+        self.assertContains(self.client.post("/game/authorize/", {"code": grant["userCode"]}), "Test 2P")
+        self.assertEqual(self.poll_device(grant).status_code, 202)
+        self.client.post("/game/authorize/", {"code": grant["userCode"], "confirm": "yes"})
+        token = self.poll_device(grant).json()["token"]
+        self.assertEqual(self.session(token).json()["user"]["id"], self.user.pk)
+        self.assertEqual(self.poll_device(grant).status_code, 410)
+
+    def test_device_expiry_and_revoked_approval(self):
+        grant = self.start_device()
+        GameAuthorization.objects.update(expires_at=timezone.now())
+        self.assertEqual(self.poll_device(grant).status_code, 410)
+        grant = self.start_device()
+        self.client.force_login(self.user)
+        self.client.post("/game/authorize/", {"code": grant["userCode"], "confirm": "yes"})
+        self.user.auth_version += 1
+        self.user.save()
+        self.assertEqual(self.poll_device(grant).status_code, 403)
+        self.assertFalse(GameAccount.objects.exists())
+
+    def test_device_denial_and_poll_throttling(self):
+        grant = self.start_device()
+        for _ in range(3):
+            self.assertEqual(self.poll_device(grant).status_code, 202)
+        self.assertEqual(self.poll_device(grant).status_code, 429)
+        self.client.force_login(self.user)
+        self.client.post("/game/authorize/", {"code": grant["userCode"], "confirm": "no"})
+        self.assertEqual(self.poll_device(grant).status_code, 410)
+        self.assertFalse(GameAccount.objects.exists())
 
     def token(self):
         response = self.login(deviceName="Desk PC")
@@ -206,5 +251,5 @@ class GameAccountTests(TestCase):
     def test_cleanup_removes_expired_accounts(self):
         self.token()
         GameAccount.objects.update(expires_at=timezone.now() - timedelta(seconds=1))
-        call_command("cleanup_auth", stdout=open("/dev/null", "w"))
+        call_command("cleanup_auth", stdout=StringIO())
         self.assertFalse(GameAccount.objects.exists())

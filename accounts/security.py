@@ -38,9 +38,10 @@ def login_allowed(request, username):
 def revoke_user_tokens(user):
     from oauth2_provider.models import AccessToken, Grant, IDToken, RefreshToken
 
-    from .models import GameAccount, GameSession
+    from .models import GameAccount, GameAuthorization, GameSession
 
     GameAccount.objects.filter(user=user).delete()
+    GameAuthorization.objects.filter(user=user).delete()
     GameSession.objects.filter(user=user).delete()
     RefreshToken.objects.filter(user=user).delete()
     AccessToken.objects.filter(user=user).delete()

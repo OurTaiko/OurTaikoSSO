@@ -141,18 +141,17 @@ def login(request, body):
         locked = User.objects.select_for_update().get(pk=user.pk)
         if not locked.is_active or locked.password != user.password:
             return problem(401, "LOGIN_INVALID", "登录状态已改变，请重新登录")
-        token, now = secrets.token_hex(32), timezone.now()
-        account = GameAccount.objects.create(
-            token_hash=digest(token),
-            user=locked,
-            client=client,
-            auth_version=locked.auth_version,
-            device_name=device_name(body.get("deviceName")),
-            last_used_at=now,
-            expires_at=now + idle_lifetime(),
-        )
+        return issue_account(locked, client, device_name(body.get("deviceName")))
+
+
+def issue_account(user, client, device):
+    token, now = secrets.token_hex(32), timezone.now()
+    account = GameAccount.objects.create(
+        token_hash=digest(token), user=user, client=client, auth_version=user.auth_version,
+        device_name=device, last_used_at=now, expires_at=now + idle_lifetime(),
+    )
     return JsonResponse(
-        {"token": token, "expiresAt": account.expires_at.isoformat(), "user": account_user(locked)}
+        {"token": token, "expiresAt": account.expires_at.isoformat(), "user": account_user(user)}
     )
 
 

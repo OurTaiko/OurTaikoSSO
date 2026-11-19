@@ -152,6 +152,15 @@ class GameAccount(models.Model):
     expires_at = models.DateTimeField(db_index=True)
 
 
+class GameAuthorization(models.Model):
+    device_hash = models.CharField(max_length=64, primary_key=True)
+    code_hash = models.CharField(max_length=64, unique=True)
+    device_name = models.CharField(max_length=80)
+    expires_at = models.DateTimeField(db_index=True)
+    user = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
+    auth_version = models.PositiveIntegerField(null=True)
+
+
 class BrowserSession(models.Model):
     session_key = models.CharField(primary_key=True, max_length=40)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
