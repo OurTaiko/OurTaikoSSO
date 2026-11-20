@@ -2,7 +2,9 @@ from datetime import timedelta
 from io import StringIO
 
 from django.core.management import call_command
-from django.test import TestCase, override_settings
+from django.db import connection
+from django.test import TestCase, override_settings, skipUnlessDBFeature
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from oauth2_provider.models import Application
 
@@ -57,6 +59,19 @@ class GameAccountTests(TestCase):
         token = self.poll_device(grant).json()["token"]
         self.assertEqual(self.session(token).json()["user"]["id"], self.user.pk)
         self.assertEqual(self.poll_device(grant).status_code, 410)
+
+    @skipUnlessDBFeature("has_select_for_update")
+    def test_approved_exchange_locks_user_before_authorization(self):
+        grant = self.start_device()
+        self.client.force_login(self.user)
+        self.client.post("/game/authorize/", {"code": grant["userCode"], "confirm": "yes"})
+        with CaptureQueriesContext(connection) as queries:
+            response = self.poll_device(grant)
+        self.assertEqual(response.status_code, 200)
+        locks = [query["sql"] for query in queries if "FOR UPDATE" in query["sql"]]
+        tables = [model._meta.db_table for query in locks for model in (User, GameAuthorization)
+                  if connection.ops.quote_name(model._meta.db_table) in query]
+        self.assertEqual(tables, [User._meta.db_table, GameAuthorization._meta.db_table])
 
     def test_device_expiry_and_revoked_approval(self):
         grant = self.start_device()
