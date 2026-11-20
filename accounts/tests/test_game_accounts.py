@@ -74,10 +74,14 @@ class GameAccountTests(TestCase):
         grant = self.start_device()
         for _ in range(3):
             self.assertEqual(self.poll_device(grant).status_code, 202)
-        self.assertEqual(self.poll_device(grant).status_code, 429)
+        limited = self.poll_device(grant)
+        self.assertEqual(limited.status_code, 429)
+        self.assertEqual(limited["Retry-After"], "10")
         self.client.force_login(self.user)
         self.client.post("/game/authorize/", {"code": grant["userCode"], "confirm": "no"})
-        self.assertEqual(self.poll_device(grant).status_code, 410)
+        self.client.post("/game/authorize/", {"code": grant["userCode"], "confirm": "yes"})
+        denied = self.poll_device(grant)
+        self.assertEqual((denied.status_code, denied.json()["code"]), (403, "DEVICE_DENIED"))
         self.assertFalse(GameAccount.objects.exists())
 
     def token(self):
