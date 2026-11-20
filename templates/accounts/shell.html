@@ -1,19 +1,15 @@
-{% extends 'base.html' %}{% load i18n %}{% load static %}
+{% extends 'base.html' %}{% load i18n %}
+{% block body_class %}app{% endblock %}
 {% block layout %}
-<div class="app-shell">
-<aside class="sidebar">
-<a class="brand" href="{% url 'overview' %}"><img src="{% static 'icon.png' %}" width="37" height="37" alt=""><span>OurTaiko<span class="brand-caption">{% translate '账号中心' %}</span></span></a>
-<div class="nav-label">{% translate '你的账号' %}</div>
-<nav aria-label="{% translate '账号设置' %}">
-<a href="{% url 'overview' %}" {% if active == 'overview' %}aria-current="page"{% endif %}><svg><use href="#i-home"/></svg>{% translate '账号概览' %}</a>
-<a href="{% url 'profile' %}" {% if active == 'profile' %}aria-current="page"{% endif %}><svg><use href="#i-user"/></svg>{% translate '个人资料' %}</a>
-<a href="{% url 'security' %}" {% if active == 'security' %}aria-current="page"{% endif %}><svg><use href="#i-lock"/></svg>{% translate '密码与安全' %}</a>
-<a href="{% url 'connections' %}" {% if active == 'connections' %}aria-current="page"{% endif %}><svg><use href="#i-apps"/></svg>{% translate '应用授权' %}</a>
-<a href="{% url 'sessions' %}" {% if active == 'sessions' %}aria-current="page"{% endif %}><svg><use href="#i-device"/></svg>{% translate '登录设备' %}</a>
-</nav>
-<div class="sidebar-bottom"><div class="account-mini"><div class="mini-avatar">{% include 'accounts/avatar.html' with size=34 %}</div><div><strong>{{ user.nickname }}</strong><span>@{{ user.username }}</span></div></div><form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="logout"><svg><use href="#i-out"/></svg>{% translate '退出登录' %}</button></form></div>
-</aside>
-<div class="workspace"><header class="topbar"><span>OurTaiko <span class="slash">/</span> {% translate '账号中心' %}</span>{% if dev_mode %}<span class="environment"><span></span>{% translate '本地开发环境' %}</span>{% endif %}{% include 'accounts/language.html' %}<form class="mobile-logout" action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="logout" aria-label="{% translate '退出登录' %}"><svg><use href="#i-out"/></svg></button></form></header>
-<main id="main" class="page-content">{% include 'accounts/messages.html' %}{% block content %}{% endblock %}</main>
-<footer class="page-footer"><span>{% translate 'OurTaiko 账号中心' %}</span><span>{% translate '属于你的节奏，始终相连。' %}</span></footer></div>
-</div>{% endblock %}
+<header class="site-nav"><div class="wrap">{% include 'accounts/brand.html' %}
+<div class="nav-account"><a class="nav-user" href="{% url 'profile' %}"><span class="mini-avatar">{% include 'accounts/avatar.html' with size=28 %}</span><span class="nav-name">{{ user.nickname }}</span></a><form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="pill small ghost" aria-label="{% translate '退出登录' %}"><svg><use href="#i-out"/></svg><span class="nav-name">{% translate '退出登录' %}</span></button></form></div></div></header>
+<nav class="sub-nav" aria-label="{% translate '账号设置' %}"><div class="wrap">
+<a href="{% url 'overview' %}" {% if active == 'overview' %}aria-current="page"{% endif %}>{% translate '账号概览' %}</a>
+<a href="{% url 'profile' %}" {% if active == 'profile' %}aria-current="page"{% endif %}>{% translate '个人资料' %}</a>
+<a href="{% url 'security' %}" {% if active == 'security' %}aria-current="page"{% endif %}>{% translate '密码与安全' %}</a>
+<a href="{% url 'connections' %}" {% if active == 'connections' %}aria-current="page"{% endif %}>{% translate '应用授权' %}</a>
+<a href="{% url 'sessions' %}" {% if active == 'sessions' %}aria-current="page"{% endif %}>{% translate '登录设备' %}</a>
+</div></nav>
+<main id="main" class="page">{% block hero %}{% endblock %}<div class="wrap {% block width %}narrow{% endblock %}">{% include 'accounts/messages.html' %}{% block content %}{% endblock %}</div></main>
+{% include 'accounts/footer.html' %}
+{% endblock %}

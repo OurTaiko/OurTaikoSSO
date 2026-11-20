@@ -1,27 +1,16 @@
-{% extends "base.html" %}
-{% load i18n %}
-{% block layout %}
-<main id="main" class="card">
-  <h1>{% translate "授权 OurTaikoPlay 登录" %}</h1>
-  {% if complete %}
-    <p>{% translate "已授权，请返回游戏。" %}</p>
-  {% elif denied %}
-    <p>{% translate "已拒绝本次授权。" %}</p>
-  {% else %}
-    <form method="post">{% csrf_token %}
-      {% if code %}
-        <p>{% translate "确认使用此账号登录游戏？" %} <strong>{{ request.user.username }}</strong></p>
-        <p>{{ device }} · {{ code }}</p>
-        <p>{% translate "仅授权你刚刚在自己设备上发起的请求。关闭页面即可取消。" %}</p>
-        <input type="hidden" name="code" value="{{ code }}">
-        <button name="confirm" value="yes">{% translate "确认授权" %}</button>
-        <button name="confirm" value="no">{% translate "拒绝" %}</button>
-      {% else %}
-        {% if invalid %}<p role="alert">{% translate "验证码无效或已过期。" %}</p>{% endif %}
-        <label>{% translate "核对自己游戏屏幕上的八位验证码" %}<input name="code" value="{{ candidate }}" maxlength="8" required autocapitalize="characters" autocomplete="off"></label>
-        <button>{% translate "继续" %}</button>
-      {% endif %}
-    </form>
-  {% endif %}
-</main>
+{% extends 'accounts/auth_shell.html' %}{% load i18n %}{% block title %}{% translate "授权 OurTaikoPlay 登录" %}{% endblock %}{% block content %}
+{% if complete %}<div class="result-icon"><svg><use href="#i-check"/></svg></div>{% elif denied %}<div class="result-icon muted"><svg><use href="#i-alert"/></svg></div>{% endif %}
+<h1>{% translate "授权 OurTaikoPlay 登录" %}</h1>
+{% if complete %}<p class="lead">{% translate "已授权，请返回游戏。" %}</p>
+{% elif denied %}<p class="lead">{% translate "已拒绝本次授权。" %}</p>
+{% else %}<form method="post" class="auth-form">{% csrf_token %}
+{% if code %}<p class="lead">{% translate "确认使用此账号登录游戏？" %}</p>
+<div class="device-card"><div class="device-account"><span class="mini-avatar">{% include 'accounts/avatar.html' with user=request.user size=40 %}</span><span><strong>{{ request.user.nickname }}</strong><small>@{{ request.user.username }}</small></span></div><p class="device-name"><svg><use href="#i-game"/></svg>{{ device }}</p><code class="user-code">{{ code }}</code></div>
+<p class="fine-print">{% translate "仅授权你刚刚在自己设备上发起的请求。关闭页面即可取消。" %}</p>
+<input type="hidden" name="code" value="{{ code }}">
+<div class="button-stack"><button class="pill full" name="confirm" value="yes">{% translate "确认授权" %}</button><button class="pill ghost full" name="confirm" value="no">{% translate "拒绝" %}</button></div>
+{% else %}{% if invalid %}<div class="notice error" role="alert"><svg><use href="#i-alert"/></svg><span>{% translate "验证码无效或已过期。" %}</span></div>{% endif %}
+<div class="field"><label for="device-code">{% translate "核对自己游戏屏幕上的八位验证码" %}</label><input id="device-code" class="code-input" name="code" value="{{ candidate }}" maxlength="8" required autocapitalize="characters" autocomplete="off" spellcheck="false"></div>
+<button class="pill full">{% translate "继续" %}</button>
+{% endif %}</form>{% endif %}
 {% endblock %}
