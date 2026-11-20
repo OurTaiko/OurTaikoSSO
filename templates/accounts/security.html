@@ -1,3 +1,6 @@
-{% extends 'accounts/shell.html' %}{% load i18n %}{% block title %}{% translate '密码与安全' %}{% endblock %}{% block content %}
-<div class="page-heading"><div><span class="eyebrow">{% translate '守护你的节奏' %}</span><h1>{% translate '密码与安全' %}</h1><p>{% translate '保护你的账号，也保护每一份创作和成绩。' %}</p></div></div>
-<section class="card settings-card"><div class="card-heading"><h2>{% translate '修改密码' %}</h2><p>{% translate '修改后，其他浏览器和游戏需要重新登录。' %}</p></div><form method="post">{% csrf_token %}{% include 'accounts/fields.html' %}<div class="card-actions"><button class="button primary">{% translate '更新密码' %}</button></div></form></section><div class="info-strip"><svg><use href="#i-lock"/></svg><p>{% url 'password-reset' as reset_url %}{% blocktranslate %}忘记当前密码？可以通过 <a href="{{ reset_url }}">注册邮箱找回密码</a>。{% endblocktranslate %}</p></div>{% endblock %}
+{% extends 'accounts/shell.html' %}{% load i18n %}{% block title %}{% translate '密码与安全' %}{% endblock %}
+{% block hero %}<header class="page-hero"><div class="wrap"><h1>{% translate '密码与安全' %}</h1><p class="lead">{% translate '保护你的账号，也保护每一份创作和成绩。' %}</p></div></header>{% endblock %}
+{% block content %}
+<section class="group"><header><h2>{% translate '修改密码' %}</h2><p>{% translate '修改后，其他浏览器和游戏需要重新登录。' %}</p></header><div class="card"><form method="post" class="card-section">{% csrf_token %}{% include 'accounts/fields.html' %}<div class="card-actions"><button class="pill">{% translate '更新密码' %}</button></div></form></div></section>
+<p class="footnote"><svg><use href="#i-lock"/></svg><span>{% url 'password-reset' as reset_url %}{% blocktranslate %}忘记当前密码？可以通过 <a href="{{ reset_url }}">注册邮箱找回密码</a>。{% endblocktranslate %}</span></p>
+{% endblock %}
