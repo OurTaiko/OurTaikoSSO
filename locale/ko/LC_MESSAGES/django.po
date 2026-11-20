@@ -1049,3 +1049,43 @@ msgstr "지금 연결할 수 없습니다"
 #: templates/oauth2_provider/authorize.html:2
 msgid "返回账号中心"
 msgstr "계정 센터로 돌아가기"
+
+#: templates/accounts/game_authorize.html
+msgid "授权 OurTaikoPlay 登录"
+msgstr "OurTaikoPlay 로그인 승인"
+
+#: templates/accounts/game_authorize.html
+msgid "已授权，请返回游戏。"
+msgstr "승인했습니다. 게임으로 돌아가세요."
+
+#: templates/accounts/game_authorize.html
+msgid "已拒绝本次授权。"
+msgstr "로그인 요청을 거절했습니다."
+
+#: templates/accounts/game_authorize.html
+msgid "确认使用此账号登录游戏？"
+msgstr "이 계정으로 게임에 로그인할까요?"
+
+#: templates/accounts/game_authorize.html
+msgid "仅授权你刚刚在自己设备上发起的请求。关闭页面即可取消。"
+msgstr "본인 기기에서 방금 시작한 요청만 승인하세요. 취소하려면 이 페이지를 닫으세요."
+
+#: templates/accounts/game_authorize.html
+msgid "确认授权"
+msgstr "승인"
+
+#: templates/accounts/game_authorize.html
+msgid "拒绝"
+msgstr "거절"
+
+#: templates/accounts/game_authorize.html
+msgid "验证码无效或已过期。"
+msgstr "코드가 잘못되었거나 만료되었습니다."
+
+#: templates/accounts/game_authorize.html
+msgid "核对自己游戏屏幕上的八位验证码"
+msgstr "게임 화면의 8자리 코드를 확인하세요"
+
+#: templates/accounts/game_authorize.html
+msgid "继续"
+msgstr "계속"

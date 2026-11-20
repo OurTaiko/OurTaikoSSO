@@ -120,6 +120,7 @@ class LanguageTests(TestCase):
             for path in [
                 "/",
                 "/profile/",
+                "/game/authorize/",
                 "/security/",
                 "/sessions/",
                 "/connections/",
@@ -131,6 +132,9 @@ class LanguageTests(TestCase):
                     response = self.client.get(path)
                     self.assertEqual(response.status_code, 200)
                     self.assertEqual(response["Content-Language"], language)
+            authorize_heading = {"zh-hans": "授权 OurTaikoPlay 登录", "en": "Authorize OurTaikoPlay sign-in",
+                                 "ja": "OurTaikoPlay へのログインを許可", "ko": "OurTaikoPlay 로그인 승인"}
+            self.assertContains(self.client.get("/game/authorize/"), authorize_heading[language])
             self.assertContains(self.client.get("/"), heading)
 
     def test_registration_keeps_selected_language_and_translates_mail(self):

@@ -1,12 +1,16 @@
 from datetime import timedelta
+from io import StringIO
+from ipaddress import ip_network
 
 from django.core.management import call_command
-from django.test import TestCase, override_settings
+from django.db import connection
+from django.test import RequestFactory, TestCase, override_settings, skipUnlessDBFeature
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from oauth2_provider.models import Application
 
-from accounts.models import ApplicationAccess, GameAccount, GameSession, User
-from accounts.security import digest
+from accounts.models import ApplicationAccess, GameAccount, GameAuthorization, GameSession, User
+from accounts.security import client_ip, digest
 
 
 class GameAccountTests(TestCase):
@@ -34,6 +38,94 @@ class GameAccountTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["user"]["username"], "player")
         self.assertEqual(self.login(username="PLAYER", password="wrong").status_code, 401)
+
+    @override_settings(TRUSTED_PROXY_CIDRS=(ip_network("192.0.2.1/32"),))
+    def test_device_start_quota_uses_only_the_verified_proxy_address(self):
+        def start(peer, header):
+            return self.client.post("/api/v1/game/account/device", {}, content_type="application/json",
+                                    REMOTE_ADDR=peer, HTTP_X_REAL_IP=header).status_code
+
+        for _ in range(30):
+            self.assertEqual(start("192.0.2.1", "198.51.100.10"), 200)
+        self.assertEqual(start("192.0.2.1", "198.51.100.10"), 429)
+        self.assertEqual(start("192.0.2.1", "198.51.100.11"), 200)
+
+        for _ in range(30):
+            self.assertEqual(start("192.0.2.2", "198.51.100.10"), 200)
+        self.assertEqual(start("192.0.2.2", "198.51.100.11"), 429)
+
+    @override_settings(TRUSTED_PROXY_CIDRS=(ip_network("2001:db8::1/128"),))
+    def test_client_ip_requires_one_valid_address_from_the_gateway(self):
+        peer = "2001:db8::1"
+        for header, expected in [("", peer), ("invalid", peer), ("192.0.2.1, 192.0.2.2", peer),
+                                 ("2001:db8:1::a", "2001:db8:1::a")]:
+            with self.subTest(header=header):
+                request = RequestFactory().get("/", REMOTE_ADDR=peer, HTTP_X_REAL_IP=header,
+                                               HTTP_X_FORWARDED_FOR="192.0.2.9")
+                self.assertEqual(client_ip(request), expected)
+        with self.settings(TRUSTED_PROXY_CIDRS=()):
+            self.assertEqual(client_ip(request), peer)
+
+    def start_device(self):
+        return self.client.post("/api/v1/game/account/device", {"deviceName": "Test 2P"},
+                                content_type="application/json").json()
+
+    def poll_device(self, grant):
+        return self.client.post("/api/v1/game/account/device/token", {"deviceCode": grant["deviceCode"]},
+                                content_type="application/json")
+
+    def test_browser_consent_and_single_use_device_exchange(self):
+        grant = self.start_device()
+        self.assertEqual(self.poll_device(grant).status_code, 202)
+        self.assertEqual(self.client.get("/game/authorize/").status_code, 302)
+        self.client.force_login(self.user)
+        preview = self.client.get("/game/authorize/", {"code": grant["userCode"]})
+        self.assertNotContains(preview, grant["deviceCode"])
+        self.assertContains(self.client.post("/game/authorize/", {"code": grant["userCode"]}), "Test 2P")
+        self.assertEqual(self.poll_device(grant).status_code, 202)
+        self.client.post("/game/authorize/", {"code": grant["userCode"], "confirm": "yes"})
+        token = self.poll_device(grant).json()["token"]
+        self.assertEqual(self.session(token).json()["user"]["id"], self.user.pk)
+        self.assertEqual(self.poll_device(grant).status_code, 410)
+
+    @skipUnlessDBFeature("has_select_for_update")
+    def test_approved_exchange_locks_user_before_authorization(self):
+        grant = self.start_device()
+        self.client.force_login(self.user)
+        self.client.post("/game/authorize/", {"code": grant["userCode"], "confirm": "yes"})
+        with CaptureQueriesContext(connection) as queries:
+            response = self.poll_device(grant)
+        self.assertEqual(response.status_code, 200)
+        locks = [query["sql"] for query in queries if "FOR UPDATE" in query["sql"]]
+        tables = [model._meta.db_table for query in locks for model in (User, GameAuthorization)
+                  if connection.ops.quote_name(model._meta.db_table) in query]
+        self.assertEqual(tables, [User._meta.db_table, GameAuthorization._meta.db_table])
+
+    def test_device_expiry_and_revoked_approval(self):
+        grant = self.start_device()
+        GameAuthorization.objects.update(expires_at=timezone.now())
+        self.assertEqual(self.poll_device(grant).status_code, 410)
+        grant = self.start_device()
+        self.client.force_login(self.user)
+        self.client.post("/game/authorize/", {"code": grant["userCode"], "confirm": "yes"})
+        self.user.auth_version += 1
+        self.user.save()
+        self.assertEqual(self.poll_device(grant).status_code, 403)
+        self.assertFalse(GameAccount.objects.exists())
+
+    def test_device_denial_and_poll_throttling(self):
+        grant = self.start_device()
+        for _ in range(3):
+            self.assertEqual(self.poll_device(grant).status_code, 202)
+        limited = self.poll_device(grant)
+        self.assertEqual(limited.status_code, 429)
+        self.assertEqual(limited["Retry-After"], "10")
+        self.client.force_login(self.user)
+        self.client.post("/game/authorize/", {"code": grant["userCode"], "confirm": "no"})
+        self.client.post("/game/authorize/", {"code": grant["userCode"], "confirm": "yes"})
+        denied = self.poll_device(grant)
+        self.assertEqual((denied.status_code, denied.json()["code"]), (403, "DEVICE_DENIED"))
+        self.assertFalse(GameAccount.objects.exists())
 
     def token(self):
         response = self.login(deviceName="Desk PC")
@@ -206,5 +298,5 @@ class GameAccountTests(TestCase):
     def test_cleanup_removes_expired_accounts(self):
         self.token()
         GameAccount.objects.update(expires_at=timezone.now() - timedelta(seconds=1))
-        call_command("cleanup_auth", stdout=open("/dev/null", "w"))
+        call_command("cleanup_auth", stdout=StringIO())
         self.assertFalse(GameAccount.objects.exists())

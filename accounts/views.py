@@ -24,7 +24,7 @@ from oauth2_provider.models import AccessToken, Application, Grant, IDToken, Ref
 from . import avatars, mail
 from .forms import AvatarForm, EmailForm, LoginForm, ProfileForm, RegistrationForm, VerifiedPasswordResetForm
 from .models import BrowserSession, ExternalLink, GameAccount, GameSession, User
-from .security import allow_attempt, revoke_user_tokens
+from .security import allow_attempt, client_ip, revoke_user_tokens
 
 
 @require_POST
@@ -71,7 +71,7 @@ def send_verification(user):
 def register(request):
     form = RegistrationForm(request.POST or None)
     if request.method == "POST":
-        if not allow_attempt("signup:" + request.META.get("REMOTE_ADDR", ""), 8, 3600):
+        if not allow_attempt("signup:" + client_ip(request), 8, 3600):
             form.add_error(None, _("注册次数过多，请一小时后再试。"))
         elif form.is_valid():
             try:
@@ -120,7 +120,7 @@ def verify_email(request, token):
 def resend_verification(request):
     form = EmailForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        if not allow_attempt("resend:" + request.META.get("REMOTE_ADDR", ""), 5, 3600):
+        if not allow_attempt("resend:" + client_ip(request), 5, 3600):
             form.add_error(None, _("发送次数过多，请稍后再试。"))
         else:
             user = User.objects.filter(
@@ -258,7 +258,7 @@ def security(request):
 def password_reset(request):
     form = VerifiedPasswordResetForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        if not allow_attempt("reset:" + request.META.get("REMOTE_ADDR", ""), 5, 3600):
+        if not allow_attempt("reset:" + client_ip(request), 5, 3600):
             form.add_error(None, _("发送次数过多，请一小时后再试。"))
         else:
             from urllib.parse import urlsplit

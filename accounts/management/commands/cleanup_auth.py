@@ -6,7 +6,15 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from accounts.models import BrowserSession, ExternalAudit, GameAccount, GameSession, RateBucket, User
+from accounts.models import (
+    BrowserSession,
+    ExternalAudit,
+    GameAccount,
+    GameAuthorization,
+    GameSession,
+    RateBucket,
+    User,
+)
 
 
 class Command(BaseCommand):
@@ -21,6 +29,7 @@ class Command(BaseCommand):
         now = timezone.now()
         GameSession.objects.filter(expires_at__lte=now).delete()
         GameAccount.objects.filter(expires_at__lte=now).delete()
+        GameAuthorization.objects.filter(expires_at__lte=now).delete()
         RateBucket.objects.filter(expires_at__lte=now).delete()
         BrowserSession.objects.exclude(session_key__in=Session.objects.values("session_key")).delete()
         ExternalAudit.objects.filter(created_at__lte=now - timedelta(days=settings.EXTERNAL_AUDIT_DAYS)).delete()

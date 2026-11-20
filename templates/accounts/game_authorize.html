@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block layout %}
+<main id="main" class="card">
+  <h1>{% translate "授权 OurTaikoPlay 登录" %}</h1>
+  {% if complete %}
+    <p>{% translate "已授权，请返回游戏。" %}</p>
+  {% elif denied %}
+    <p>{% translate "已拒绝本次授权。" %}</p>
+  {% else %}
+    <form method="post">{% csrf_token %}
+      {% if code %}
+        <p>{% translate "确认使用此账号登录游戏？" %} <strong>{{ request.user.username }}</strong></p>
+        <p>{{ device }} · {{ code }}</p>
+        <p>{% translate "仅授权你刚刚在自己设备上发起的请求。关闭页面即可取消。" %}</p>
+        <input type="hidden" name="code" value="{{ code }}">
+        <button name="confirm" value="yes">{% translate "确认授权" %}</button>
+        <button name="confirm" value="no">{% translate "拒绝" %}</button>
+      {% else %}
+        {% if invalid %}<p role="alert">{% translate "验证码无效或已过期。" %}</p>{% endif %}
+        <label>{% translate "核对自己游戏屏幕上的八位验证码" %}<input name="code" value="{{ candidate }}" maxlength="8" required autocapitalize="characters" autocomplete="off"></label>
+        <button>{% translate "继续" %}</button>
+      {% endif %}
+    </form>
+  {% endif %}
+</main>
+{% endblock %}
