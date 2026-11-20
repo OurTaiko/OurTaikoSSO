@@ -77,3 +77,7 @@ used in production. Existing browser/game sessions will require login again.
 Back up both databases, application files, environment files and the OIDC key.
 Fanmade rollback requires the pre-018 database and old application versions;
 keep the SSO service/database available until rollback has been verified.
+
+### 反向代理后的账号限流
+
+网关须用连接来源覆盖客户端发来的 `X-Real-IP`。确认 SSO 收到的直连网关地址后，在 SSO 环境文件中设置 `TRUSTED_PROXY_CIDRS`，只列实际网关的 /32 或 /128 地址。保留空值时按直连地址计数。无效或含多个地址的头会回退到直连地址。此设置适用于设备授权、登录、注册和邮件相关的按地址限流。

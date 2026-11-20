@@ -1,6 +1,8 @@
 import hashlib
 from datetime import timedelta
+from ipaddress import ip_address
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -27,9 +29,25 @@ def allow_attempt(key, limit=10, seconds=600):
         return bucket.count <= limit
 
 
+def client_ip(request):
+    """Use a single gateway-supplied address only when the connection came from a configured proxy."""
+    remote = request.META.get("REMOTE_ADDR", "")
+    try:
+        peer = ip_address(remote)
+    except ValueError:
+        return "unknown"
+    if any(peer in network for network in settings.TRUSTED_PROXY_CIDRS):
+        forwarded = request.META.get("HTTP_X_REAL_IP", "").strip()
+        if forwarded and "%" not in forwarded:
+            try:
+                return str(ip_address(forwarded))
+            except ValueError:
+                pass
+    return str(peer)
+
+
 def login_allowed(request, username):
-    # Forwarded headers are deliberately not trusted. Gateways must also limit their public login route.
-    ip_ok = allow_attempt("login-ip:" + request.META.get("REMOTE_ADDR", "unknown"), 60)
+    ip_ok = allow_attempt("login-ip:" + client_ip(request), 60)
     # One count for a login name however it is capitalised, as it is one account.
     user_ok = allow_attempt("login-user:" + username[:100].lower(), 15)
     return ip_ok and user_ok

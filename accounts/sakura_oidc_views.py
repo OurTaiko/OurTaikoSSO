@@ -34,7 +34,7 @@ from .sakura_oidc_identity import (
     bound_ourtaiko_user,
     verified_viewer_sub,
 )
-from .security import allow_attempt
+from .security import allow_attempt, client_ip
 
 VIEWER_ISSUER = "https://viewer.sakura-bot.cn/oidc"
 VIEWER_DISCOVERY = VIEWER_ISSUER + "/.well-known/openid-configuration"
@@ -275,7 +275,7 @@ def sakura_signup(request):
         return _notice(request, _("注册已超时，请重新使用 Sakura Viewer 登录。"))
     form = PartnerSignupForm(request.POST or None, initial={"nickname": pending["nickname"]})
     if request.method == "POST":
-        if not allow_attempt("signup:" + request.META.get("REMOTE_ADDR", ""), 8, 3600):
+        if not allow_attempt("signup:" + client_ip(request), 8, 3600):
             form.add_error(None, _("注册次数过多，请一小时后再试。"))
         elif form.is_valid():
             return _create_signup(request, form, pending)

@@ -26,7 +26,7 @@ from django.views.decorators.debug import sensitive_post_parameters
 from . import mail
 from .forms import EmailCodeForm, EmailLoginForm
 from .models import User
-from .security import allow_attempt
+from .security import allow_attempt, client_ip
 
 SESSION_KEY = "email_login"
 CODE_SECONDS = 600
@@ -78,7 +78,7 @@ def start(request):
     form = EmailLoginForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         email = form.cleaned_data["email"]
-        address_ok = allow_attempt("email-login-ip:" + request.META.get("REMOTE_ADDR", ""), 10, 3600)
+        address_ok = allow_attempt("email-login-ip:" + client_ip(request), 10, 3600)
         mailbox_ok = allow_attempt("email-login-email:" + email.casefold()[:200], 5, 3600)
         if not (address_ok and mailbox_ok):
             form.add_error(None, _("发送次数过多，请稍后再试。"))

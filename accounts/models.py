@@ -153,8 +153,8 @@ class GameAccount(models.Model):
 
 
 class GameAuthorization(models.Model):
-    denied = models.BooleanField(default=False)
     device_hash = models.CharField(max_length=64, primary_key=True)
+    denied = models.BooleanField(default=False)
     code_hash = models.CharField(max_length=64, unique=True)
     device_name = models.CharField(max_length=80)
     expires_at = models.DateTimeField(db_index=True)

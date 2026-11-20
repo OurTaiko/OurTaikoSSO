@@ -1,5 +1,6 @@
 import os
 from email.utils import parseaddr
+from ipaddress import ip_network
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -18,6 +19,12 @@ SSO_BASE_URL = os.getenv("SSO_BASE_URL", "http://127.0.0.1:8090").rstrip("/")
 if not DEBUG and not SSO_BASE_URL.startswith("https://"):
     raise ImproperlyConfigured("SSO_BASE_URL must use HTTPS outside local development.")
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+try:
+    TRUSTED_PROXY_CIDRS = tuple(
+        ip_network(value.strip()) for value in os.getenv("TRUSTED_PROXY_CIDRS", "").split(",") if value.strip()
+    )
+except ValueError as error:
+    raise ImproperlyConfigured("TRUSTED_PROXY_CIDRS must contain valid IP networks") from error
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

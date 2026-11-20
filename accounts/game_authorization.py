@@ -13,14 +13,14 @@ from django.views.decorators.http import require_http_methods
 from .api import problem
 from .game_accounts import device_name, game_client, game_endpoint, issue_account
 from .models import GameAuthorization, User
-from .security import allow_attempt, digest
+from .security import allow_attempt, client_ip, digest
 
 
 @game_endpoint("POST")
 def start(request, body):
     if game_client() is None:
         return problem(403, "GAME_DISABLED", "游戏登录暂不可用")
-    if not allow_attempt("device-start:" + request.META.get("REMOTE_ADDR", ""), 30):
+    if not allow_attempt("device-start:" + client_ip(request), 30):
         return problem(429, "RATE_LIMITED", "请稍后重试")
     secret = secrets.token_hex(32)
     code = "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(8))
