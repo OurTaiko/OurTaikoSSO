@@ -1,7 +1,32 @@
 from urllib.parse import urlsplit
 
 from django.conf import settings
+from django.http import QueryDict
 from oauth2_provider.models import Application
+
+AUTHORIZE_PATH = "/o/authorize/"
+
+
+def _callback_origin(params):
+    """The exact registered callback origin an authorization request will redirect to, if any."""
+    app = Application.objects.filter(client_id=params.get("client_id", "")).first()
+    redirect = params.get("redirect_uri", "")
+    if app and redirect in app.redirect_uris.split():
+        parsed = urlsplit(redirect)
+        if parsed.scheme in {"http", "https"} and parsed.netloc and not parsed.username:
+            return parsed.scheme + "://" + parsed.netloc
+    return None
+
+
+def _sign_in_next(request):
+    """Where a sign-in form on this page goes once it succeeds."""
+    if request.path in {"/login/", "/login/email/"}:
+        return request.POST.get("next") or request.GET.get("next") or ""
+    if request.path == "/login/email/code/":
+        from .email_login import SESSION_KEY
+
+        return (request.session.get(SESSION_KEY) or {}).get("next") or ""
+    return ""
 
 
 class UploadLimitMiddleware:
@@ -41,15 +66,20 @@ class ResponsePolicyMiddleware:
         response = self.get_response(request)
         form_action = "'self'"
         # Chromium also applies form-action to the POST's redirect chain. Permit
-        # only this application's exact registered callback origin on consent pages.
-        if request.path == "/o/authorize/":
+        # only this application's exact registered callback origin on consent pages,
+        # and on sign-in pages whose next step is that authorization request: signing in
+        # there redirects to /o/authorize/, which redirects straight on to the callback
+        # once consent is not needed. Without it the browser silently stays on the form.
+        params = None
+        if request.path == AUTHORIZE_PATH:
             params = request.POST if request.method == "POST" else request.GET
-            app = Application.objects.filter(client_id=params.get("client_id", "")).first()
-            redirect = params.get("redirect_uri", "")
-            if app and redirect in app.redirect_uris.split():
-                parsed = urlsplit(redirect)
-                if parsed.scheme in {"http", "https"} and parsed.netloc and not parsed.username:
-                    form_action += " " + parsed.scheme + "://" + parsed.netloc
+        else:
+            next_url = urlsplit(_sign_in_next(request))
+            if next_url.path == AUTHORIZE_PATH and next_url.netloc in {"", request.get_host()}:
+                params = QueryDict(next_url.query)
+        origin = _callback_origin(params) if params is not None else None
+        if origin:
+            form_action += " " + origin
         # The account page's "link Sakura Viewer" form POSTs to /link/sakura/, which 302s to Viewer.
         match = getattr(request, "resolver_match", None)
         if (match and match.url_name == "connections"

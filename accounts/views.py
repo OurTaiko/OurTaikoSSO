@@ -49,6 +49,36 @@ class AccountLoginView(LoginView):
     redirect_authenticated_user = False
 
 
+LOGIN_PATHS = {"/login/", "/login/email/", "/login/email/code/"}
+
+
+def csrf_failure(request, reason=""):
+    """A sign-in form that already worked must not end in a 403 the second time it is sent.
+
+    Signing in rotates the CSRF cookie. If the page is sent again before the browser has left it
+    (a second click while the first request and its redirects are still under way), the old form
+    token no longer matches. The person is signed in by then, so carry on to where they were going.
+    """
+    if request.user.is_authenticated and request.path in LOGIN_PATHS:
+        next_url = request.POST.get("next") or request.GET.get("next") or ""
+        if not url_has_allowed_host_and_scheme(
+            next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+        ):
+            next_url = settings.LOGIN_REDIRECT_URL
+        return redirect(next_url)
+    response = render(
+        request,
+        "accounts/notice.html",
+        {
+            "title": _("页面已过期"),
+            "text": _("这个页面停留得太久或已在别处提交过。请刷新页面后再试一次。"),
+            "retry": request.get_full_path(),
+        },
+    )
+    response.status_code = 403
+    return response
+
+
 def notice(request, title, text):
     return render(request, "accounts/notice.html", {"title": title, "text": text})
 

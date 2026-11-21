@@ -139,6 +139,7 @@ h1, h2, .lead { text-wrap: balance; }
 }
 .pill:hover { background: var(--accent-hover); text-decoration: none; }
 .pill:active { transform: translateY(1px); }
+.pill[aria-busy="true"] { opacity: 0.6; cursor: progress; }
 .pill svg { width: 16px; height: 16px; }
 .pill.small { min-height: 30px; padding: 0 14px; font-size: 13px; }
 .pill.full { width: 100%; }

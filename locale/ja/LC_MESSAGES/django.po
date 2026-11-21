@@ -1089,3 +1089,15 @@ msgstr "ゲーム画面に表示された8文字のコードを確認してく�
 #: templates/accounts/game_authorize.html
 msgid "继续"
 msgstr "続ける"
+
+#: accounts/views.py
+msgid "页面已过期"
+msgstr "ページの有効期限が切れました"
+
+#: accounts/views.py
+msgid "这个页面停留得太久或已在别处提交过。请刷新页面后再试一次。"
+msgstr "このページは長く開かれていたか、すでに送信されています。ページを更新してもう一度お試しください。"
+
+#: templates/accounts/notice.html
+msgid "刷新后重试"
+msgstr "更新してやり直す"

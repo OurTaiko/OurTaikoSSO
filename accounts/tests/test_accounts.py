@@ -211,6 +211,28 @@ class AccountTests(TestCase):
         self.assertEqual(browser.post("/profile/", {"nickname": "bad"}).status_code, 403)
         self.assertEqual(browser.get("/logout/").status_code, 405)
 
+    def test_sign_in_form_sent_twice_continues_instead_of_403(self):
+        # The second click re-sends the page's form after the first sign-in has rotated the cookie.
+        browser = Client(enforce_csrf_checks=True)
+        browser.get("/login/")
+        old = browser.cookies[settings.CSRF_COOKIE_NAME].value
+        form = {"username": "player1", "password": PASSWORD, "csrfmiddlewaretoken": old}
+        first = browser.post("/login/", {**form, "next": "/sessions/"})
+        self.assertRedirects(first, "/sessions/", fetch_redirect_response=False)
+        self.assertNotEqual(browser.cookies[settings.CSRF_COOKIE_NAME].value, old)
+        second = browser.post("/login/", {**form, "next": "/sessions/"})
+        self.assertRedirects(second, "/sessions/", fetch_redirect_response=False)
+        evil = browser.post("/login/", {**form, "next": "https://evil.example/"})
+        self.assertRedirects(evil, "/", fetch_redirect_response=False)
+        # Anywhere else, or when not signed in, a stale form is still refused.
+        self.assertEqual(browser.post("/profile/", {"nickname": "x", "csrfmiddlewaretoken": old}).status_code, 403)
+        stranger = Client(enforce_csrf_checks=True)
+        stranger.get("/login/")
+        refused = stranger.post("/login/?next=/sessions/", {**form, "csrfmiddlewaretoken": "x" * 32})
+        self.assertContains(refused, "刷新后重试", status_code=403)
+        self.assertContains(refused, 'href="/login/?next=/sessions/"', status_code=403)
+        self.assertFalse(refused.wsgi_request.user.is_authenticated)
+
     def test_profile_edit_preserves_id_and_rejects_control_chars(self):
         self.client.force_login(self.user)
         self.assertEqual(self.client.post("/profile/", {"nickname": "咚咚", "preferred_language": "zh-hans"}).status_code, 302)
@@ -502,3 +524,32 @@ class AccountTests(TestCase):
         response = self.client.get("/o/authorize/", params)
         self.assertNotIn("evil.example", response["Content-Security-Policy"])
         self.assertTrue(response["Content-Security-Policy"].endswith("form-action 'self'"))
+
+    def test_sign_in_csp_allows_callback_of_the_authorization_it_continues(self):
+        # Signing in redirects to /o/authorize/, which goes straight on to the callback when no
+        # consent is needed; Chromium checks that whole chain against the sign-in page's form-action.
+        from urllib.parse import quote, urlencode
+
+        from accounts.email_login import SESSION_KEY
+
+        app = self.application()
+        query = {"client_id": app.client_id, "redirect_uri": "http://localhost:9001/callback", "response_type": "code"}
+        authorize = "/o/authorize/?" + urlencode(query)
+        allowed = "form-action 'self' http://localhost:9001"
+        for path in ("/login/", "/login/email/"):
+            self.assertTrue(self.client.get(path, {"next": authorize})["Content-Security-Policy"].endswith(allowed))
+            absolute = "http://testserver" + authorize
+            self.assertTrue(self.client.get(path, {"next": absolute})["Content-Security-Policy"].endswith(allowed))
+        response = self.client.post("/login/?next=" + quote(authorize), {"username": "x", "password": "y"})
+        self.assertTrue(response["Content-Security-Policy"].endswith(allowed))
+        session = self.client.session
+        session[SESSION_KEY] = {"email": "a@b.c", "user": "", "hash": "", "expires": 2**40, "attempts": 0, "next": authorize}
+        session.save()
+        self.assertTrue(self.client.get("/login/email/code/")["Content-Security-Policy"].endswith(allowed))
+        for next_url in (
+            "/o/authorize/?" + urlencode({**query, "redirect_uri": "https://evil.example/callback"}),
+            "https://evil.example/o/authorize/?" + urlencode(query),
+            "/sessions/",
+        ):
+            policy = self.client.get("/login/", {"next": next_url})["Content-Security-Policy"]
+            self.assertTrue(policy.endswith("form-action 'self'"), policy)

@@ -1090,3 +1090,15 @@ msgstr "Check the eight-character code on your game screen"
 #: templates/accounts/game_authorize.html
 msgid "继续"
 msgstr "Continue"
+
+#: accounts/views.py
+msgid "页面已过期"
+msgstr "Page expired"
+
+#: accounts/views.py
+msgid "这个页面停留得太久或已在别处提交过。请刷新页面后再试一次。"
+msgstr "This page was open too long or has already been sent. Refresh the page and try again."
+
+#: templates/accounts/notice.html
+msgid "刷新后重试"
+msgstr "Refresh and try again"
